@@ -1,0 +1,13 @@
+{
+  "eventId": "evt_123",
+  "type": "community_vouch",
+  "evidence": {
+    "note": "I know the organizer and confirmed the date and location.",
+    "proofUrls": [
+      "https://example.com/proof/photo-1.jpg"
+    ]
+  },
+  "submittedBy": {
+    "userId": "usr_456"
+  }
+}
