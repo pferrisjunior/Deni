@@ -1,6 +1,17 @@
+-- Deni schema
+
+/* optional dev reset for repeated testing
+DROP TABLE IF EXISTS public.verification_submissions CASCADE;
+DROP TABLE IF EXISTS public.event_media CASCADE;
+DROP TABLE IF EXISTS public.truck_media CASCADE;
+DROP TABLE IF EXISTS public.truck_stops CASCADE;
+DROP TABLE IF EXISTS public.food_trucks CASCADE;
+DROP TABLE IF EXISTS public.events CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+*/
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- CREATE SCHEMA IF NOT EXISTS public;
+CREATE SCHEMA IF NOT EXISTS public;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
