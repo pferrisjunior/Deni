@@ -9,32 +9,23 @@ DROP TABLE IF EXISTS public.food_trucks CASCADE;
 DROP TABLE IF EXISTS public.events CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
 */
+
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE SCHEMA IF NOT EXISTS public;
 
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SET search_path = public, pg_catalog;
 SET check_function_bodies = false;
-SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
 
--- SET default_tablespace = '';
--- SET default_table_access_method = heap;
-
---
--- Table: users
--- Purpose: Stores all registered users for the platform including hosts, admins, and standard users
--- Notes:
---   - role controls authorization level
---   - email is globally unique
---
+/* users */
 
 CREATE TABLE public.users (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -47,14 +38,8 @@ CREATE TABLE public.users (
     CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['user'::text, 'host'::text, 'admin'::text])))
 );
 
---
--- Table: events
--- Purpose: Stores community events created by users or hosts
--- Notes:
---   - created_by_user_id references users
---   - trust_score is computed via verification and reputation systems
---   - status controls visibility lifecycle
---
+
+/* events */
 
 CREATE TABLE public.events (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -75,13 +60,7 @@ CREATE TABLE public.events (
     CONSTRAINT events_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])))
 );
 
---
--- Table: food_trucks
--- Purpose: Stores food truck business profiles owned by host users
--- Notes:
---   - owner_user_id references users
---   - status allows soft enable or disable of a truck
---
+/* Food Trucks */
 
 CREATE TABLE public.food_trucks (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -97,14 +76,7 @@ CREATE TABLE public.food_trucks (
     CONSTRAINT food_trucks_status_check CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text])))
 );
 
---
--- Table: truck_stops
--- Purpose: Represents scheduled or active locations where food trucks operate
--- Notes:
---   - linked to food_trucks
---   - created_by_user_id tracks who submitted the stop
---   - trust_score mirrors events trust behavior
---
+/* Truck Stops */
 
 CREATE TABLE public.truck_stops (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -123,13 +95,7 @@ CREATE TABLE public.truck_stops (
     CONSTRAINT truck_stops_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])))
 );
 
---
--- Table: event_media
--- Purpose: Stores media assets associated with events
--- Notes:
---   - supports images initially
---   - cascades on event deletion
---
+/* Event Media */
 
 CREATE TABLE public.event_media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
@@ -140,13 +106,7 @@ CREATE TABLE public.event_media (
     CONSTRAINT event_media_media_type_check CHECK ((media_type = 'image'::text))
 );
 
---
--- Table: truck_media
--- Purpose: Stores media assets associated with food trucks
--- Notes:
---   - supports images initially
---   - cascades on food truck deletion
---
+/* Truck Media */
 
 CREATE TABLE public.truck_media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
