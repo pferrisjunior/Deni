@@ -1,6 +1,6 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE SCHEMA IF NOT EXISTS public;
+-- CREATE SCHEMA IF NOT EXISTS public;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -145,118 +145,5 @@ CREATE TABLE public.truck_media (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT truck_media_media_type_check CHECK ((media_type = 'image'::text))
 );
-
---
--- Table: verification_submissions
--- Purpose:
---   Stores community and system verification evidence for events and truck stops.
---   Verifications contribute to trust scoring and moderation decisions.
---
--- Design Notes:
---   - Polymorphic target model using (target_type, target_id)
---     * target_type = 'event' or 'truck_stop'
---     * target_id references the corresponding record
---   - A verification may be submitted by any authenticated user
---   - Reviews are performed by admins or authorized moderators
---
--- Workflow:
---   1. User submits verification evidence (photo, link, check-in, or host claim)
---   2. Record is created with verdict = 'pending'
---   3. Admin reviews submission and sets verdict to 'accepted' or 'rejected'
---   4. Accepted verifications may increase trust_score on the target entity
---
--- Constraints:
---   - reviewed_by_user_id and reviewed_at must be NULL while verdict = 'pending'
---   - reviewed_by_user_id and reviewed_at must be NOT NULL once reviewed
---   - target integrity must be enforced via application logic or triggers
---
--- Future Extensions:
---   - Weighting by verification method
---   - Multiple verifications contributing cumulatively to trust_score
---   - Automated verification signals (GPS, time correlation, reputation)
---
-
-CREATE TABLE public.verification_submissions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    submitted_by_user_id uuid NOT NULL,
-    target_type text NOT NULL,
-    target_id uuid NOT NULL,
-    method text NOT NULL,
-    evidence_url text,
-    note text,
-    verdict text DEFAULT 'pending'::text NOT NULL,
-    reviewed_by_user_id uuid,
-    reviewed_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT verification_submissions_method_check CHECK ((method = ANY (ARRAY['photo'::text, 'link'::text, 'check_in'::text, 'host_claim'::text]))),
-    CONSTRAINT verification_submissions_target_type_check CHECK ((target_type = ANY (ARRAY['event'::text, 'truck_stop'::text]))),
-    CONSTRAINT verification_submissions_verdict_check CHECK ((verdict = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text])))
-);
-
-ALTER TABLE ONLY public.event_media
-    ADD CONSTRAINT event_media_pkey PRIMARY KEY (id);
-
-DROP INDEX IF EXISTS users_email_key;
-ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_email_key;
-
-CREATE UNIQUE INDEX users_email_unique_ci
-ON public.users (lower(email));
-
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.food_trucks
-    ADD CONSTRAINT food_trucks_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.truck_media
-    ADD CONSTRAINT truck_media_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.truck_stops
-    ADD CONSTRAINT truck_stops_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY public.verification_submissions
-    ADD CONSTRAINT verification_submissions_pkey PRIMARY KEY (id);
-
-
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_events_lat_lng ON public.events (lat, lng);
-CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events USING btree (start_time);
-CREATE INDEX IF NOT EXISTS idx_food_trucks_owner ON public.food_trucks USING btree (owner_user_id);
-CREATE INDEX IF NOT EXISTS idx_truck_media_truck ON public.truck_media USING btree (food_truck_id);
-CREATE INDEX IF NOT EXISTS idx_truck_stops_lat_lng ON public.truck_stops USING btree (lat, lng);
-CREATE INDEX IF NOT EXISTS idx_truck_stops_start_time ON public.truck_stops USING btree (start_time);
-CREATE INDEX IF NOT EXISTS idx_truck_stops_truck ON public.truck_stops USING btree (food_truck_id);
-CREATE INDEX IF NOT EXISTS idx_verification_submitter ON public.verification_submissions USING btree (submitted_by_user_id);
-CREATE INDEX IF NOT EXISTS idx_verification_target ON public.verification_submissions USING btree (target_type, target_id);
-
--- Constraints
-ALTER TABLE ONLY public.event_media
-    ADD CONSTRAINT event_media_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.food_trucks
-    ADD CONSTRAINT food_trucks_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.truck_media
-    ADD CONSTRAINT truck_media_food_truck_id_fkey FOREIGN KEY (food_truck_id) REFERENCES public.food_trucks(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.truck_stops
-    ADD CONSTRAINT truck_stops_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.truck_stops
-    ADD CONSTRAINT truck_stops_food_truck_id_fkey FOREIGN KEY (food_truck_id) REFERENCES public.food_trucks(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY public.verification_submissions
-    ADD CONSTRAINT verification_submissions_reviewed_by_user_id_fkey FOREIGN KEY (reviewed_by_user_id) REFERENCES public.users(id);
-
-ALTER TABLE ONLY public.verification_submissions
-    ADD CONSTRAINT verification_submissions_submitted_by_user_id_fkey FOREIGN KEY (submitted_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
 
 
