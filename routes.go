@@ -51,6 +51,7 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error": "Invalid Coordinates"}`))
 		return
 	}
+	// Hardcoded response just to ensure that we can send back a json response to the frontend. 
 	resp := RouteResponse{
 		Duration: "12 mins",
 		Distance: "0.3 Miles",
