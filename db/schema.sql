@@ -1,62 +1,48 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
---
--- PostgreSQL database dump
---
-
-
--- Dumped from database version 14.19 (Homebrew)
--- Dumped by pg_dump version 14.19 (Homebrew)
+CREATE SCHEMA IF NOT EXISTS public;
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
+SET search_path = public, pg_catalog;
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: public; Type: SCHEMA; Schema: -; Owner: jonblancett
---
 
-CREATE SCHEMA public;
-
-
-ALTER SCHEMA public OWNER TO jonblancett;
+-- SET default_tablespace = '';
+-- SET default_table_access_method = heap;
 
 --
--- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: jonblancett
+-- Table: users
+-- Purpose: Stores all registered users for the platform including hosts, admins, and standard users
+-- Notes:
+--   - role controls authorization level
+--   - email is globally unique
 --
 
-COMMENT ON SCHEMA public IS 'standard public schema';
-
-
-SET default_tablespace = '';
-
-SET default_table_access_method = heap;
-
---
--- Name: event_media; Type: TABLE; Schema: public; Owner: jonblancett
---
-
-CREATE TABLE public.event_media (
+CREATE TABLE public.users (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    event_id uuid NOT NULL,
-    url text NOT NULL,
-    media_type text DEFAULT 'image'::text NOT NULL,
+    email text NOT NULL,
+    password_hash text NOT NULL,
+    display_name text NOT NULL,
+    role text DEFAULT 'user'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT event_media_media_type_check CHECK ((media_type = 'image'::text))
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['user'::text, 'host'::text, 'admin'::text])))
 );
 
-
-ALTER TABLE public.event_media OWNER TO jonblancett;
-
 --
--- Name: events; Type: TABLE; Schema: public; Owner: jonblancett
+-- Table: events
+-- Purpose: Stores community events created by users or hosts
+-- Notes:
+--   - created_by_user_id references users
+--   - trust_score is computed via verification and reputation systems
+--   - status controls visibility lifecycle
 --
 
 CREATE TABLE public.events (
@@ -78,11 +64,12 @@ CREATE TABLE public.events (
     CONSTRAINT events_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])))
 );
 
-
-ALTER TABLE public.events OWNER TO jonblancett;
-
 --
--- Name: food_trucks; Type: TABLE; Schema: public; Owner: jonblancett
+-- Table: food_trucks
+-- Purpose: Stores food truck business profiles owned by host users
+-- Notes:
+--   - owner_user_id references users
+--   - status allows soft enable or disable of a truck
 --
 
 CREATE TABLE public.food_trucks (
@@ -99,27 +86,13 @@ CREATE TABLE public.food_trucks (
     CONSTRAINT food_trucks_status_check CHECK ((status = ANY (ARRAY['active'::text, 'inactive'::text])))
 );
 
-
-ALTER TABLE public.food_trucks OWNER TO jonblancett;
-
 --
--- Name: truck_media; Type: TABLE; Schema: public; Owner: jonblancett
---
-
-CREATE TABLE public.truck_media (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    food_truck_id uuid NOT NULL,
-    url text NOT NULL,
-    media_type text DEFAULT 'image'::text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT truck_media_media_type_check CHECK ((media_type = 'image'::text))
-);
-
-
-ALTER TABLE public.truck_media OWNER TO jonblancett;
-
---
--- Name: truck_stops; Type: TABLE; Schema: public; Owner: jonblancett
+-- Table: truck_stops
+-- Purpose: Represents scheduled or active locations where food trucks operate
+-- Notes:
+--   - linked to food_trucks
+--   - created_by_user_id tracks who submitted the stop
+--   - trust_score mirrors events trust behavior
 --
 
 CREATE TABLE public.truck_stops (
@@ -139,29 +112,68 @@ CREATE TABLE public.truck_stops (
     CONSTRAINT truck_stops_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'published'::text, 'archived'::text])))
 );
 
-
-ALTER TABLE public.truck_stops OWNER TO jonblancett;
-
 --
--- Name: users; Type: TABLE; Schema: public; Owner: jonblancett
+-- Table: event_media
+-- Purpose: Stores media assets associated with events
+-- Notes:
+--   - supports images initially
+--   - cascades on event deletion
 --
 
-CREATE TABLE public.users (
+CREATE TABLE public.event_media (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    email text NOT NULL,
-    password_hash text NOT NULL,
-    display_name text NOT NULL,
-    role text DEFAULT 'user'::text NOT NULL,
+    event_id uuid NOT NULL,
+    url text NOT NULL,
+    media_type text DEFAULT 'image'::text NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT users_role_check CHECK ((role = ANY (ARRAY['user'::text, 'host'::text, 'admin'::text])))
+    CONSTRAINT event_media_media_type_check CHECK ((media_type = 'image'::text))
 );
 
+--
+-- Table: truck_media
+-- Purpose: Stores media assets associated with food trucks
+-- Notes:
+--   - supports images initially
+--   - cascades on food truck deletion
+--
 
-ALTER TABLE public.users OWNER TO jonblancett;
+CREATE TABLE public.truck_media (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    food_truck_id uuid NOT NULL,
+    url text NOT NULL,
+    media_type text DEFAULT 'image'::text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT truck_media_media_type_check CHECK ((media_type = 'image'::text))
+);
 
 --
--- Name: verification_submissions; Type: TABLE; Schema: public; Owner: jonblancett
+-- Table: verification_submissions
+-- Purpose:
+--   Stores community and system verification evidence for events and truck stops.
+--   Verifications contribute to trust scoring and moderation decisions.
+--
+-- Design Notes:
+--   - Polymorphic target model using (target_type, target_id)
+--     * target_type = 'event' or 'truck_stop'
+--     * target_id references the corresponding record
+--   - A verification may be submitted by any authenticated user
+--   - Reviews are performed by admins or authorized moderators
+--
+-- Workflow:
+--   1. User submits verification evidence (photo, link, check-in, or host claim)
+--   2. Record is created with verdict = 'pending'
+--   3. Admin reviews submission and sets verdict to 'accepted' or 'rejected'
+--   4. Accepted verifications may increase trust_score on the target entity
+--
+-- Constraints:
+--   - reviewed_by_user_id and reviewed_at must be NULL while verdict = 'pending'
+--   - reviewed_by_user_id and reviewed_at must be NOT NULL once reviewed
+--   - target integrity must be enforced via application logic or triggers
+--
+-- Future Extensions:
+--   - Weighting by verification method
+--   - Multiple verifications contributing cumulatively to trust_score
+--   - Automated verification signals (GPS, time correlation, reputation)
 --
 
 CREATE TABLE public.verification_submissions (
@@ -181,201 +193,70 @@ CREATE TABLE public.verification_submissions (
     CONSTRAINT verification_submissions_verdict_check CHECK ((verdict = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text])))
 );
 
-
-ALTER TABLE public.verification_submissions OWNER TO jonblancett;
-
---
--- Name: event_media event_media_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.event_media
     ADD CONSTRAINT event_media_pkey PRIMARY KEY (id);
 
+DROP INDEX IF EXISTS users_email_key;
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_email_key;
 
---
--- Name: events events_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
+CREATE UNIQUE INDEX users_email_unique_ci
+ON public.users (lower(email));
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_pkey PRIMARY KEY (id);
 
-
---
--- Name: food_trucks food_trucks_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.food_trucks
     ADD CONSTRAINT food_trucks_pkey PRIMARY KEY (id);
-
-
---
--- Name: truck_media truck_media_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.truck_media
     ADD CONSTRAINT truck_media_pkey PRIMARY KEY (id);
 
-
---
--- Name: truck_stops truck_stops_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.truck_stops
     ADD CONSTRAINT truck_stops_pkey PRIMARY KEY (id);
 
-
---
--- Name: users users_email_key; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
-
-ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_email_key UNIQUE (email);
-
-
---
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
-
-
---
--- Name: verification_submissions verification_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.verification_submissions
     ADD CONSTRAINT verification_submissions_pkey PRIMARY KEY (id);
 
 
---
--- Name: idx_events_lat_lng; Type: INDEX; Schema: public; Owner: jonblancett
---
 
-CREATE INDEX idx_events_lat_lng ON public.events USING btree (lat, lng);
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_events_lat_lng ON public.events (lat, lng);
+CREATE INDEX IF NOT EXISTS idx_events_start_time ON public.events USING btree (start_time);
+CREATE INDEX IF NOT EXISTS idx_food_trucks_owner ON public.food_trucks USING btree (owner_user_id);
+CREATE INDEX IF NOT EXISTS idx_truck_media_truck ON public.truck_media USING btree (food_truck_id);
+CREATE INDEX IF NOT EXISTS idx_truck_stops_lat_lng ON public.truck_stops USING btree (lat, lng);
+CREATE INDEX IF NOT EXISTS idx_truck_stops_start_time ON public.truck_stops USING btree (start_time);
+CREATE INDEX IF NOT EXISTS idx_truck_stops_truck ON public.truck_stops USING btree (food_truck_id);
+CREATE INDEX IF NOT EXISTS idx_verification_submitter ON public.verification_submissions USING btree (submitted_by_user_id);
+CREATE INDEX IF NOT EXISTS idx_verification_target ON public.verification_submissions USING btree (target_type, target_id);
 
-
---
--- Name: idx_events_start_time; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_events_start_time ON public.events USING btree (start_time);
-
-
---
--- Name: idx_food_trucks_owner; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_food_trucks_owner ON public.food_trucks USING btree (owner_user_id);
-
-
---
--- Name: idx_truck_media_truck; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_truck_media_truck ON public.truck_media USING btree (food_truck_id);
-
-
---
--- Name: idx_truck_stops_lat_lng; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_truck_stops_lat_lng ON public.truck_stops USING btree (lat, lng);
-
-
---
--- Name: idx_truck_stops_start_time; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_truck_stops_start_time ON public.truck_stops USING btree (start_time);
-
-
---
--- Name: idx_truck_stops_truck; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_truck_stops_truck ON public.truck_stops USING btree (food_truck_id);
-
-
---
--- Name: idx_verification_submitter; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_verification_submitter ON public.verification_submissions USING btree (submitted_by_user_id);
-
-
---
--- Name: idx_verification_target; Type: INDEX; Schema: public; Owner: jonblancett
---
-
-CREATE INDEX idx_verification_target ON public.verification_submissions USING btree (target_type, target_id);
-
-
---
--- Name: event_media event_media_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
-
+-- Constraints
 ALTER TABLE ONLY public.event_media
     ADD CONSTRAINT event_media_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: events events_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
-
---
--- Name: food_trucks food_trucks_owner_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.food_trucks
     ADD CONSTRAINT food_trucks_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: truck_media truck_media_food_truck_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.truck_media
     ADD CONSTRAINT truck_media_food_truck_id_fkey FOREIGN KEY (food_truck_id) REFERENCES public.food_trucks(id) ON DELETE CASCADE;
 
-
---
--- Name: truck_stops truck_stops_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.truck_stops
     ADD CONSTRAINT truck_stops_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: truck_stops truck_stops_food_truck_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.truck_stops
     ADD CONSTRAINT truck_stops_food_truck_id_fkey FOREIGN KEY (food_truck_id) REFERENCES public.food_trucks(id) ON DELETE CASCADE;
 
-
---
--- Name: verification_submissions verification_submissions_reviewed_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
-
 ALTER TABLE ONLY public.verification_submissions
     ADD CONSTRAINT verification_submissions_reviewed_by_user_id_fkey FOREIGN KEY (reviewed_by_user_id) REFERENCES public.users(id);
-
-
---
--- Name: verification_submissions verification_submissions_submitted_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: jonblancett
---
 
 ALTER TABLE ONLY public.verification_submissions
     ADD CONSTRAINT verification_submissions_submitted_by_user_id_fkey FOREIGN KEY (submitted_by_user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
---
--- PostgreSQL database dump complete
---
 
