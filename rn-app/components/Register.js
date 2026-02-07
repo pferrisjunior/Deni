@@ -1,3 +1,4 @@
+//We need to verify passwords
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
