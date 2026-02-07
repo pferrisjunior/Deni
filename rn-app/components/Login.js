@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from 'expo-router'
 import {
   View,
   Text,
@@ -35,7 +36,7 @@ export default function Login(){
       </View>
         <View style = {styles.form}>
           <View style = {styles.input}>
-            <Text style = {styles.inputLabel}> Email Adress</Text>
+            <Text style = {styles.inputLabel}> Email Address</Text>
             <TextInput
               autoCapitalize = "none"
               autoCorrect = {false}
