@@ -1,12 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground } from 'react-native';
 
 export default function App() {
+  const localImage = require("./assets/map-placeholder.png")
   return (
-    <View style={styles.container}>
+    <ImageBackground source={localImage} style={styles.container}>
       <Text>Open up App.js to start working on your app!</Text>
       <StatusBar style="auto" />
-    </View>
+    </ImageBackground>
   );
 }
 
