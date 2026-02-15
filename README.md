@@ -1,4 +1,4 @@
-## Sprint 1 RTDB Smoke Test (CRUD)
+## Sprint 1 RTDB Test (CRUD)
 
 This project includes a basic Firebase Realtime Database smoke test screen to verify:
 Create, Read, Update, Delete against the RTDB instance.
