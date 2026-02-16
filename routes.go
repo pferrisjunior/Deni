@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type RouteRequest struct {
@@ -139,9 +143,9 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	var googleResp struct {
 		Routes []struct {
-			DurationSeconds int `json:"durationSeconds"`
-			DistanceMeters  int `json:"distanceMeters"`
-			Polyline        struct {
+			Duration       string `json:"duration"`
+			DistanceMeters int    `json:"distanceMeters"`
+			Polyline       struct {
 				EncodedPolyline string `json:"encodedPolyline"`
 			} `json:"polyline"`
 		} `json:"routes"`
@@ -157,14 +161,21 @@ func RouteHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"error": "No route found"}`))
 		return
 	}
+
 	route := googleResp.Routes[0]
-	minutes := route.DurationSeconds / 60
+	secondsStr := strings.TrimSuffix(route.Duration, "s")
+	secondsInt, err := strconv.Atoi(secondsStr)
+	distInMiles := float64(route.DistanceMeters) * 0.000621371
+	if err != nil {
+		log.Println("Error parsing duration:", err)
+		secondsInt = 0
+	}
+	formattedDuration := (time.Duration(secondsInt) * time.Second).String()
 	routeResp := RouteResponse{
-		Duration: fmt.Sprintf("%d mins", minutes),
-		Distance: fmt.Sprintf("%d meters", route.DistanceMeters),
+		Duration: formattedDuration,
+		Distance: fmt.Sprintf("%.2f miles", distInMiles),
 		Polyline: route.Polyline.EncodedPolyline,
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(routeResp)
 }
