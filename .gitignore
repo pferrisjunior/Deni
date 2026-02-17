@@ -1,3 +1,20 @@
+# Node / React Native
+node_modules/
+
+# Environment variables
+.env
+.env.local
+
+# Expo
+.expo/
+
+# Build output
+build/
+dist/
+
+# OS junk
+.DS_Store
+
 .env
 .vscode/
 node_modules/
