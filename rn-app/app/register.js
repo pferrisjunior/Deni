@@ -9,18 +9,31 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
+import { auth } from "../lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { useRouter } from "expo-router";
 export default function Register(){
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('')
+    const router = useRouter();
     useEffect(() => {
       setError(checkPassword(password,confirmPassword));
     }, [password,confirmPassword]);
-    const isValid = !error && password && confirmPassword;
-    const userRegister = () => {
-    console.log("New User: ", email, password);
+    const isValid = !error && email && password && confirmPassword;
+    const userRegister = async () => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      router.replace("/home");
+    }catch (error){
+      setError(error.message)
+    }
   };
+  const loginButton = () =>{
+    router.replace("/login")
+
+  }
   function checkPassword(password, confirmPassword){
     if (!password || !confirmPassword){
       return ""
@@ -96,6 +109,12 @@ export default function Register(){
         disabled={!isValid}
         >
           <Text style={styles.btnText}>Press here to register!</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+        style={styles.btn}
+        onPress={loginButton}
+        >
+          <Text style={styles.btnText}>Press here to go back to sign in page.</Text>
         </TouchableOpacity>
         </View>
       </View>
