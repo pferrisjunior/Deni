@@ -1,7 +1,7 @@
 import React from "react";
 import { SafeAreaView, View, Text, Pressable, Alert } from "react-native";
 import { ref, set, get } from "firebase/database";
-import { db } from "../../src/firebase";
+import { db } from "./firebase";
 import { ref, set, get, remove, update } from "firebase/database";
 
 
