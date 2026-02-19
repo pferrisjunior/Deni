@@ -4,35 +4,12 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, Platform, S
 import { auth } from "../lib/firebase";
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword,  } from "firebase/auth"; 
 import { useRouter } from 'expo-router';
-import * as WebBrowser from "expo-web-browser";
-import * as Google from "expo-auth-session/providers/google";
-import * as AuthSession from 'expo-auth-session';
-WebBrowser.maybeCompleteAuthSession();
+import { GoogleSignin, GoogleSigninButton } from "@react-native-google-signin/google-signin";
 export default function Login(){
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const router = useRouter();
-    const [request, response, promptAsync] = Google.useAuthRequest({
-      clientId : '202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com' ,
-      redirectUri: 'https://auth.expo.io/@wjb21301/rn-app',
-    });
-    console.log(AuthSession.makeRedirectUri({ useProxy: true }));
-    useEffect(() => {
-      const handleGoogleSignIn = async () => {
-      if (response?.type === 'success'){
-        const { id_token } = response.params;
-        const credential = GoogleAuthProvider.credential(id_token);
-        try {
-          await signInWithCredential(auth, credential);
-          router.replace("/home");
-        } catch (error) {
-          console.log("Google sign-in error:", error.message);
-        }
-      }
-    };
-    handleGoogleSignIn();
-  },[response]);
-     
     const signIn = async () => {
       try{
         await signInWithEmailAndPassword(auth, email, password);
@@ -44,6 +21,32 @@ export default function Login(){
   const registrationButton = () => {
     router.replace("/register")
   };
+  useEffect(() => {
+  GoogleSignin.configure({
+    webClientId: "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com",
+    offlineAccess: true,
+  });
+  setGoogleReady(true);
+}, []);
+const signInWithGoogle = async () => {
+  try {
+    setIsSubmitting(true);
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const response = await GoogleSignin.signIn();
+    console.log("GoogleSignin response:", response);
+    const { data } = response;
+    const { idToken } = data;
+    if (!idToken) throw new Error("No idToken returned from Google");
+    const credential = GoogleAuthProvider.credential(idToken);
+    const userCredential = await signInWithCredential(auth, credential);
+    console.log("Firebase user:", userCredential.user);
+    router.replace("/home");
+  } catch (error) {
+    console.log("Google Login Error:", error);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   return (
     <View style={{ flex: 1, backgroundColor: '#fbe0b3' }}>
     <SafeAreaView style ={{ flex: 1, backgroundColor: '#fbe0b3' }}>
@@ -97,7 +100,7 @@ export default function Login(){
           <TouchableOpacity style = {styles.btn} onPress = {signIn}>
               <Text style = {styles.buttonText} > Sign in </Text>
           </TouchableOpacity>  
-          <TouchableOpacity style = {styles.btn} onPress = {() => promptAsync()}>
+          <TouchableOpacity style = {styles.btn} onPress = {signInWithGoogle}>
             <Text style = {styles.buttonText} > Sign in with Google </Text>
           </TouchableOpacity>
           <TouchableOpacity style = {styles.btn} onPress = {registrationButton}>

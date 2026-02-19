@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "202780657934",
+    "project_id": "deni-auth-dev",
+    "storage_bucket": "deni-auth-dev.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:202780657934:android:3a0d4f8bb1eb4b31e42f5f",
+        "android_client_info": {
+          "package_name": "com.wjb21301.deni"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxFOPHgCcKww9l-_LK3lg8bo7OWbTU7sg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
