@@ -1,23 +1,41 @@
-# Node / React Native
-node_modules/
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# Environment variables
-.env
-.env.local
+# dependencies
+node_modules/
 
 # Expo
 .expo/
-
-# Build output
-build/
 dist/
+web-build/
+expo-env.d.ts
 
-# OS junk
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
 .DS_Store
+*.pem
 
-.env
-.vscode/
-node_modules/
-.expo
+# local env files
+.env*.local
 
-node_modules
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
