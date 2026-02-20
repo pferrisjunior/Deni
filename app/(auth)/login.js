@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, Platform, ScrollView, KeyboardAvoidingView, } from "react-native";
-import { auth } from "../lib/firebase";
+import { auth } from "../../lib/firebase";
 import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword,  } from "firebase/auth"; 
 import { useRouter } from 'expo-router';
 import { GoogleSignin, GoogleSigninButton } from "@react-native-google-signin/google-signin";
@@ -13,20 +13,18 @@ export default function Login(){
     const signIn = async () => {
       try{
         await signInWithEmailAndPassword(auth, email, password);
-        router.replace("/home");
     }catch (error) {
       console.log("Login error:", error.message);
     }
   };
   const registrationButton = () => {
-    router.replace("/register")
+    router.push("/register");
   };
   useEffect(() => {
   GoogleSignin.configure({
     webClientId: "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com",
     offlineAccess: true,
   });
-  setGoogleReady(true);
 }, []);
 const signInWithGoogle = async () => {
   try {
@@ -40,7 +38,6 @@ const signInWithGoogle = async () => {
     const credential = GoogleAuthProvider.credential(idToken);
     const userCredential = await signInWithCredential(auth, credential);
     console.log("Firebase user:", userCredential.user);
-    router.replace("/home");
   } catch (error) {
     console.log("Google Login Error:", error);
   } finally {
@@ -63,7 +60,7 @@ const signInWithGoogle = async () => {
       <View style = {styles.container}>
         <View style = {styles.header}>
           <Image
-            source={require('../assets/logo.png')}
+            source={require('../../assets/content.png')}
             style = {styles.headerImg}
             />
         <Text style = {styles.title}>Sign into Deni</Text>

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
-import { auth } from "../lib/firebase";
+import { auth } from "../../lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
 export default function Register(){
@@ -25,7 +25,7 @@ export default function Register(){
     const userRegister = async () => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      router.replace("/home");
+      router.replace("/login");
     }catch (error){
       setError(error.message)
     }
