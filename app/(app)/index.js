@@ -1,12 +1,22 @@
 // import tools
 //use state for screen memory
 import React, { useState, useRef } from "react";
-import { View, StyleSheet, TextInput, Text, Pressable, Image } from "react-native";
-import MapView from "react-native-maps";
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Text,
+  Pressable,
+  Image,
+} from "react-native";
+//import MapView from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 //safe area tools so the top UI does not go under the iPhone notch/status bar
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 // export for the Home Page
 export default function HomePage() {
@@ -22,25 +32,20 @@ export default function HomePage() {
 
   //Google Map background
   return (
-  <SafeAreaView style={styles.container}>
-      {/*<MapView
-        ref={currentLocation}
-        style={StyleSheet.absoluteFillObject}
-        initialRegion={{
-          latitude: 35.0458, // Chattanooga placeholder
-          longitude: -85.3094,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
-      />
-      */}
-      <Image
-        source={require("../../assets/map-placeholder.png")}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
+    <SafeAreaView style={styles.container}>
+      {
+        <MapView
+          ref={currentLocation}
+          provider={PROVIDER_GOOGLE}
+          style={StyleSheet.absoluteFillObject}
+          initialRegion={{
+            latitude: 35.0458, // Chattanooga placeholder
+            longitude: -85.3094,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }}
         />
-
-      
+      }
       <View style={[styles.topWrap, { top: insets.top + 10 }]}>
         <View style={styles.searchRow}>
           <Pressable style={styles.profileButton}>
@@ -112,7 +117,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 10,
     right: 10,
-    
   },
 
   searchRow: {
