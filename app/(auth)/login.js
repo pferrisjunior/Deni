@@ -22,7 +22,7 @@ export default function Login(){
   };
   useEffect(() => {
   GoogleSignin.configure({
-    webClientId: "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com",
+    webClientId: "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com", //Replace with Jon's web client ID
     offlineAccess: true,
   });
 }, []);

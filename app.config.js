@@ -1,5 +1,5 @@
 import "dotenv/config";
-
+// We will have to change some firebase values here as well.
 export default {
   expo: {
     name: "Deni",
@@ -12,7 +12,7 @@ export default {
     newArchEnabled: false,
 
     ios: {
-      bundleIdentifier: "com.wjb21301.deni",
+      bundleIdentifier: "com.wjb21301.deni",  //Change this to match the new Firebase project when we switch
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
       config: {
@@ -21,7 +21,7 @@ export default {
     },
 
     android: {
-      package: "com.wjb21301.deni",
+      package: "com.wjb21301.deni", //Change this to match the new Firebase project when we switch
       userInterfaceStyle: "light",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
@@ -42,7 +42,7 @@ export default {
         "@react-native-google-signin/google-signin",
         {
           iosUrlScheme:
-            "com.googleusercontent.apps.202780657934-u7fuk7v8ckjhqfi6h1tbi4nrk25fvmdj",
+            "com.googleusercontent.apps.202780657934-u7fuk7v8ckjhqfi6h1tbi4nrk25fvmdj", //Replace with Jon's iOS URL scheme
         },
       ],
     ],
