@@ -3,7 +3,7 @@ import "dotenv/config";
 export default {
   expo: {
     name: "Deni",
-    slug: "Deni",
+    slug: "rn-app",
 
     android: {
       package: "com.wjb21301.deni",
