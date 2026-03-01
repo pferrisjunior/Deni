@@ -10,10 +10,12 @@ Create, Read, Update, Delete against the RTDB instance.
 npm install
 
 2) Configure Firebase env vars
+Setup
 
-Copy the template:
+1. Copy .env.example to .env
+2. Fill in communal Firebase project values
+3. Run npx expo start -c
 
-cp .env.example .env
 
 Fill in the values in .env using Firebase Console:
 Project Settings → General → Your apps → Web app config
