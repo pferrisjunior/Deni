@@ -3,6 +3,13 @@
     "name": "deni-mobile",
     "slug": "deni-mobile",
     "version": "1.0.0",
-    "orientation": "portrait"
+
+    "ios": {
+      "bundleIdentifier": "com.deni.mobile"
+    },
+
+    "android": {
+      "package": "com.deni.mobile"
+    }
   }
 }
