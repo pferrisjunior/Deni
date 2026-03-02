@@ -3,13 +3,28 @@
     "name": "deni-mobile",
     "slug": "deni-mobile",
     "version": "1.0.0",
-
     "ios": {
+      "supportsTablet": true,
       "bundleIdentifier": "com.deni.mobile"
     },
 
     "android": {
-      "package": "com.deni.mobile"
-    }
+      "package": "com.deni.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+
+    "plugins": [
+      "expo-router",
+      [
+        "react-native-maps",
+        {
+          "iosGoogleMapsApiKey": "YOUR_IOS_KEY",
+          "androidGoogleMapsApiKey": "YOUR_ANDROID_KEY"
+        }
+      ]
+    ]
   }
 }
