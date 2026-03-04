@@ -12,7 +12,7 @@ export default {
     newArchEnabled: false,
 
     ios: {
-      bundleIdentifier: "com.wjb21301.deni",  //Change this to match the new Firebase project when we switch
+      bundleIdentifier: "com.Foodtruck.deni",  //changed
       supportsTablet: true,
       googleServicesFile: "./GoogleService-Info.plist",
       config: {
@@ -21,7 +21,7 @@ export default {
     },
 
     android: {
-      package: "com.wjb21301.deni", //Change this to match the new Firebase project when we switch
+      package: "com.Foodtruck.deni", //changed
       userInterfaceStyle: "light",
       googleServicesFile: "./google-services.json",
       adaptiveIcon: {
@@ -42,7 +42,7 @@ export default {
         "@react-native-google-signin/google-signin",
         {
           iosUrlScheme:
-            "com.googleusercontent.apps.202780657934-u7fuk7v8ckjhqfi6h1tbi4nrk25fvmdj", //Replace with Jon's iOS URL scheme
+            "com.googleusercontent.apps.638018823842-q7432j2ierr9h0g4umb1sit02ns6r7en", //Replace with Jon's iOS URL scheme
         },
       ],
     ],

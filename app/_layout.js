@@ -6,6 +6,10 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect , useState } from "react";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+GoogleSignin.configure({
+  webClientId: "638018823842-l9237c7n2lmb2mfo9a4of667se7em3am.apps.googleusercontent.com",
+});
 //root layout 
 export default function RootLayout() {
     const [user, setUser] = useState(null);

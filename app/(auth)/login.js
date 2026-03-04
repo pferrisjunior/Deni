@@ -20,26 +20,23 @@ export default function Login(){
   const registrationButton = () => {
     router.push("/register");
   };
-  useEffect(() => {
-  GoogleSignin.configure({
-    webClientId: "202780657934-aeh8u3vtt9v4nisv1amsfban9ut4paj2.apps.googleusercontent.com", //Replace with Jon's web client ID
-    offlineAccess: true,
-  });
-}, []);
-const signInWithGoogle = async () => {
+  const signInWithGoogle = async () => {
   try {
     setIsSubmitting(true);
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    const response = await GoogleSignin.signIn();
-    console.log("GoogleSignin response:", response);
-    const { data } = response;
-    const { idToken } = data;
-    if (!idToken) throw new Error("No idToken returned from Google");
+    await GoogleSignin.hasPlayServices({
+      showPlayServicesUpdateDialog: true,
+    });
+    const userInfo = await GoogleSignin.signIn();
+    console.log("userInfo:", JSON.stringify(userInfo, null, 2));
+
+    const idToken = userInfo?.data?.idToken ?? userInfo?.idToken;
+    console.log("idToken:", idToken);
+    
+    if (!idToken) throw new Error("No idToken returned");
     const credential = GoogleAuthProvider.credential(idToken);
-    const userCredential = await signInWithCredential(auth, credential);
-    console.log("Firebase user:", userCredential.user);
+    await signInWithCredential(auth, credential);
   } catch (error) {
-    console.log("Google Login Error:", error);
+    console.log("Full error:", JSON.stringify(error, null, 2));
   } finally {
     setIsSubmitting(false);
   }
