@@ -12,110 +12,131 @@ import {
 import { auth } from "../../lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useRouter } from "expo-router";
-export default function Register(){
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('')
-    const router = useRouter();
-    useEffect(() => {
-      setError(checkPassword(password,confirmPassword));
-    }, [password,confirmPassword]);
-    const isValid = !error && email && password && confirmPassword;
-    const userRegister = async () => {
+export default function Register() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('')
+  const router = useRouter();
+  const [requirements, setRequirements] = useState({
+    length: false,
+    capital: false,
+    number: false,
+    symbol: false,
+    match: false
+  });
+  useEffect(() => {
+    setRequirements(checkPassword(password, confirmPassword));
+  }, [password, confirmPassword]);
+  const isValid =
+    email &&
+    requirements.length &&
+    requirements.capital &&
+    requirements.number &&
+    requirements.symbol &&
+    requirements.match;
+  const userRegister = async () => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
       router.replace("/login");
-    }catch (error){
+    } catch (error) {
       setError(error.message)
     }
   };
-  const loginButton = () =>{
+  const loginButton = () => {
     router.replace("/login")
 
   }
-  function checkPassword(password, confirmPassword){
-    if (!password || !confirmPassword){
-      return ""
-    }
-    if (password.length < 8){
-      return "Password must have at least 8 characters"
-    }
-    if (!/^[A-Z]/.test(password)){
-      return "Password must start with a capital letter"
-    }
-    if (!/[0-9]/.test(password)){
-      return "Password must contain at least one number."
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)){
-      return "Password must contain at least one symbol."
-    }
-    if (password !== confirmPassword){
-      return "Passwords must match."
-    }
-    return ""
-
+  function checkPassword(password, confirmPassword) {
+    return {
+      length: password.length >= 8,
+      capital: /[A-Z]/.test(password),
+      number: /[0-9]/.test(password),
+      symbol: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      match: password && confirmPassword && password === confirmPassword
+    };
   }
   return (
-    <SafeAreaView style ={{ flex: 1, backgroundColor: '#fbe0b3' }}>
-      <View style = {styles.container}>
-        <View style = {styles.header}>
-        <Text style = {styles.title}>Register for Deni</Text>
-          <Text style = {styles.subtitle}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fbe0b3' }}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Register for Deni</Text>
+          <Text style={styles.subtitle}>
             Register for Deni using an E-mail and Password
           </Text>
-      </View>
-        <View style = {styles.form}>
-          <View style = {styles.input}>
-            <Text style = {styles.inputLabel}> Email Address</Text>
+        </View>
+        <View style={styles.form}>
+          <View style={styles.input}>
+            <Text style={styles.inputLabel}> Email Address</Text>
             <TextInput
-              autoCapitalize = "none"
-              autoCorrect = {false}
-              keyboardType = "email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
               style={styles.inputControl}
               placeholder="john@example.com"
-              placeholderTextColor = "#6b7280"
-              value = {email}
+              placeholderTextColor="#6b7280"
+              value={email}
               onChangeText={setEmail}
-              />
-            </View>
+            />
+          </View>
 
-           <View style = {styles.input}>
-            <Text style = {styles.inputLabel}> Password</Text>
+          <View style={styles.input}>
+            <Text style={styles.inputLabel}> Password</Text>
             <TextInput
               secureTextEntry
-              style = {styles.inputControl}
+              style={styles.inputControl}
               placeholder="**********"
-              placeholderTextColor = "#6b7280"
-              value = {password}
+              placeholderTextColor="#6b7280"
+              value={password}
               onChangeText={setPassword}
-              />
-            </View>
-          <View style = {styles.input}>
-            <Text style = {styles.inputLabel}> Confirm Password</Text>
+            />
+          </View>
+          <View style={styles.input}>
+            <Text style={styles.inputLabel}> Confirm Password</Text>
             <TextInput
               secureTextEntry
-              style = {styles.inputControl}
+              style={styles.inputControl}
               placeholder="**********"
-              placeholderTextColor = "#6b7280"
-              value = {confirmPassword}
+              placeholderTextColor="#6b7280"
+              value={confirmPassword}
               onChangeText={setConfirmPassword}
-              />
-            </View>
-          {error ? <Text style = {styles.error}>{error}</Text> : null}
-        <TouchableOpacity
-        style={[styles.btn, !isValid && styles.btnDisabled]}
-        onPress={userRegister}
-        disabled={!isValid}
-        >
-          <Text style={styles.btnText}>Press here to register!</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-        style={styles.btn}
-        onPress={loginButton}
-        >
-          <Text style={styles.btnText}>Press here to go back to sign in page.</Text>
-        </TouchableOpacity>
+            />
+          </View>
+          <View style={styles.rules}>
+            <Text style={requirements.length ? styles.good : styles.bad}>
+              {requirements.length ? "✓" : "✗"} At least 8 characters
+            </Text>
+
+            <Text style={requirements.capital ? styles.good : styles.bad}>
+              {requirements.capital ? "✓" : "✗"} Contains a capital letter
+            </Text>
+
+            <Text style={requirements.number ? styles.good : styles.bad}>
+              {requirements.number ? "✓" : "✗"} Contains a number
+            </Text>
+
+            <Text style={requirements.symbol ? styles.good : styles.bad}>
+              {requirements.symbol ? "✓" : "✗"} Contains a symbol
+            </Text>
+
+            <Text style={requirements.match ? styles.good : styles.bad}>
+              {requirements.match ? "✓" : "✗"} Passwords match
+            </Text>
+          </View>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <TouchableOpacity
+            style={[styles.btn, !isValid && styles.btnDisabled]}
+            onPress={userRegister}
+            disabled={!isValid}
+          >
+            <Text style={styles.btnText}>Press here to register!</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={loginButton}
+          >
+            <Text style={styles.btnText}>Press here to go back to sign in page.</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
@@ -187,12 +208,23 @@ const styles = StyleSheet.create({
     color: "#222",
   },
   btnDisabled: {
-  opacity: 0.5,
-},
- error: {
-  color: "red",
-  textAlign: "center",
-  marginBottom: 12,
-  fontSize: 14,
-}, 
+    opacity: 0.5,
+  },
+  error: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: 12,
+    fontSize: 14,
+  },
+  rules: {
+    marginTop: 12
+  },
+  good: {
+    color: "green",
+    fontSize: 14
+  },
+  bad: {
+    color: "red",
+    fontSize: 14
+  }
 });
