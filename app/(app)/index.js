@@ -10,7 +10,7 @@ import {
   Image,
 } from "react-native";
 //import MapView from "react-native-maps";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 //safe area tools so the top UI does not go under the iPhone notch/status bar
 import {
@@ -30,6 +30,23 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(false);
 
+  //REMOVE LATER -> TEST DATA!!!!!!!!
+  const [foodTrucks, setFoodTrucks] = useState([
+    {
+      id: "1",
+      name: "Crumble Cup",
+      latitude: 35.0423,
+      longitude: -85.3105,
+    },
+    {
+      id: "2",
+      name: "Burger Bus",
+      latitude: 35.0345,
+      longitude: -85.3152,
+    }
+  ]);
+
+
   //Google Map background
   return (
     <SafeAreaView style={styles.container}>
@@ -44,7 +61,26 @@ export default function HomePage() {
             latitudeDelta: 0.05,
             longitudeDelta: 0.05,
           }}
-        />
+        > 
+        {foodTrucks.map((truck) => (
+          <Marker
+            key={truck.id}
+            coordinate={{
+              latitude: truck.latitude,
+              longitude: truck.longitude,
+            }}
+            title={truck.name}
+          />
+        ))}
+          <Marker
+            coordinate={{
+              latitude: 35.0458,
+              longitude: -85.3094,
+            }}
+            title="Chattanooga"
+            description="Example marker"
+          />
+        </MapView>
       }
       <View style={[styles.topWrap, { top: insets.top + 10 }]}>
         <View style={styles.searchRow}>
@@ -185,4 +221,5 @@ const styles = StyleSheet.create({
   resultItem: {
     paddingVertical: 6,
   },
+
 });
