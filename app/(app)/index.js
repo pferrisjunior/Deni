@@ -50,7 +50,6 @@ export default function HomePage() {
   //Google Map background
   return (
     <SafeAreaView style={styles.container}>
-      {
         <MapView
           ref={currentLocation}
           provider={PROVIDER_GOOGLE}
