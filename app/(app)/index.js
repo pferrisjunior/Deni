@@ -14,6 +14,10 @@ import {
 //import MapView from "react-native-maps";
 import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
+
+// import router so the add button can navigate to the Add Event screen
+import { router } from "expo-router";
+
 import useUserLocation from "../../hooks/userLocation";
 import mockEvents from "../../data/mockEvents";
 import mockLocations from "../../data/mockLocations";
@@ -265,7 +269,7 @@ if (filteredEvents.length > 0) {
 
           <Pressable 
           style={styles.addButton}
-          onPress={() => router.push("/(app)/events")}
+          onPress={() => router.push("/(app)/add-events")}
           >
             <Ionicons name="add" size={26} color="#555" />
           </Pressable>
