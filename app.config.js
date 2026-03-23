@@ -45,6 +45,13 @@ export default {
             "com.googleusercontent.apps.638018823842-q7432j2ierr9h0g4umb1sit02ns6r7en", //Replace with Jon's iOS URL scheme
         },
       ],
+      [
+      "expo-location",
+      {
+         "locationAlwaysAndWhenInUsePermission": "Allow Deni to access your location."
+      }
     ],
+  
+  ],
   },
 };
