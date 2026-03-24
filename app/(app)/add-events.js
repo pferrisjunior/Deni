@@ -21,6 +21,14 @@ export default function AddEvent() {
         return;
       }
 
+      const parsedLat = Number(lat);
+      const parsedLng = Number(lng);
+
+      if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng)) {
+        Alert.alert("Invalid coordinates", "Latitude and longitude must be valid numbers");
+        return;
+      }
+
       const eventRef = push(ref(db, "events"));
 
       await set(eventRef, {
@@ -29,8 +37,8 @@ export default function AddEvent() {
         startTime: Date.now(),
         createdByUid: uid,
         location: {
-          lat: Number(lat),
-          lng: Number(lng)
+          lat: parsedLat,
+          lng: parsedLng
         }
       });
 
@@ -42,7 +50,7 @@ export default function AddEvent() {
       setLng("");
 
     } catch (err) {
-      Alert.alert("Error", err.message);
+      Alert.alert("Error", err?.message || "Something went wrong while creating the event");
     }
   };
 
