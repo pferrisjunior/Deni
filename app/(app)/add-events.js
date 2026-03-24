@@ -28,7 +28,10 @@ export default function AddEvent() {
         Alert.alert("Invalid coordinates", "Latitude and longitude must be valid numbers");
         return;
       }
-
+	
+      console.log("auth.currentUser:", auth?.currentUser);
+      console.log("db value:", db);
+      console.log("db type:", typeof db);	
       const eventRef = push(ref(db, "events"));
 
       await set(eventRef, {

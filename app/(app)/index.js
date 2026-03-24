@@ -1,28 +1,31 @@
 // import tools
-//import router
-import { useRouter } from "expo-router";
-//use state for screen memory
 import React, { useState, useRef, useEffect } from "react";
+
+// import router hook for screen navigation
+import { useRouter } from "expo-router";
+
 import {
   View,
   StyleSheet,
   TextInput,
   Text,
   Pressable,
-  Image,
 } from "react-native";
-//import MapView from "react-native-maps";
+
+import { ref, onValue } from "firebase/database";
+import { db } from "../../lib/firebase";
+
 import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 
-// import router so the add button can navigate to the Add Event screen
-import { router } from "expo-router";
-
+// custom hook for getting the user's current location
 import useUserLocation from "../../hooks/userLocation";
-import mockEvents from "../../data/mockEvents";
-import mockLocations from "../../data/mockLocations";
 
-//safe area tools so the top UI does not go under the iPhone notch/status bar
+// temporary mock data until backend is connected
+//import mockEvents from "../../data/mockEvents";
+//import mockLocations from "../../data/mockLocations";
+
+// safe area tools so the top UI does not go under the iPhone notch/status bar
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -30,37 +33,40 @@ import {
 
 // export for the Home Page
 export default function HomePage() {
-  //router 
+  // router for navigation between screens
   const router = useRouter();
-  //map current location memory (ref to control map later)
+
+  // map ref so we can move the camera programmatically
   const currentLocation = useRef(null);
 
-  //safe area insets (push UI below iPhone notch/status bar)
+  // safe area insets so top controls stay below notch/status bar
   const insets = useSafeAreaInsets();
 
-  //user search
+  // user search state
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(false);
 
+  // current user location from custom hook
   const { latitude, longitude, errorMessage } = useUserLocation();
 
-  //using mock data for food trucks/events until backend is up and running
+  // mock data state until backend is wired in
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [locations, setLocations] = useState([]);
 
-  //getting the state abbreviations for the mock data
-   const getFullStateName = (abbr) => {
+  // optional helper for expanding state abbreviations if needed later
+  const getFullStateName = (abbr) => {
     if (!abbr) return "";
 
     const states = {
       tx: "texas",
       tn: "tennessee",
     };
+
     return states[abbr.toLowerCase()] || "";
   };
 
-//user location
+  // when user location becomes available, animate map to that region
   useEffect(() => {
     if (latitude && longitude && currentLocation.current) {
       currentLocation.current.animateToRegion({
@@ -72,133 +78,205 @@ export default function HomePage() {
     }
   }, [latitude, longitude]);
 
-  //use effect to log events
+  // log events for debugging while developing
   useEffect(() => {
-  console.log("EVENTS:", events);
-}, [events]);
+    console.log("EVENTS:", events);
+  }, [events]);
 
-//use effect to log filtered events 
- useEffect(() => {
-  console.log("FILTERED EVENTS:", filteredEvents);
-}, [filteredEvents]);
+  // log filtered events for debugging search results
+  useEffect(() => {
+    console.log("FILTERED EVENTS:", filteredEvents);
+  }, [filteredEvents]);
 
-//user effect to to set mock events on app load
 useEffect(() => {
-  setEvents(mockEvents);
-  setLocations(mockLocations);
-}, []);
+  const eventsRef = ref(db, "events");
 
-//store what user is typing
+  const unsubscribe = onValue(eventsRef, (snapshot) => {
+    const data = snapshot.val();
+
+    if (!data) {
+      setEvents([]);
+      return;
+    }
+
+    const loadedEvents = Object.keys(data).map((id) => {
+      const item = data[id];
+
+      return {
+        id,
+        name: item.title || "Untitled Event",
+        description: item.description || "",
+        latitude: item.location?.lat,
+        longitude: item.location?.lng,
+        city: item.location?.name || "",
+        state: "",
+        type: "event",
+        startTime: item.startTime || null,
+        endTime: item.endTime || null,
+        createdByUid: item.createdByUid || null,
+      };
+    }).filter(
+      (item) =>
+        typeof item.latitude === "number" &&
+        typeof item.longitude === "number"
+    );
+
+    console.log("LOADED EVENTS FROM DB:", loadedEvents);
+    setEvents(loadedEvents);
+     });
+
+    return () => unsubscribe();
+    }, []);
+useEffect(() => {
+  const locationsRef = ref(db, "trucks");
+
+  const unsubscribe = onValue(locationsRef, (snapshot) => {
+    const data = snapshot.val();
+
+    if (!data) {
+      setLocations([]);
+      return;
+    }
+
+    const loadedLocations = Object.keys(data).map((id) => {
+      const item = data[id];
+
+      return {
+        id,
+        name: item.title || item.name || "Location",
+        state: item.state || "",
+        latitude: item.lat,
+        longitude: item.lng,
+      };
+    }).filter(
+      (item) =>
+        typeof item.latitude === "number" &&
+        typeof item.longitude === "number"
+    );
+
+    console.log("LOADED LOCATIONS FROM DB:", loadedLocations);
+    setLocations(loadedLocations);
+  });
+
+  return () => unsubscribe();
+  }, []);
+
+  // store what user is typing into the search bar
   const handleSearch = (text) => {
     setSearch(text);
-};
+  };
 
-useEffect(() => {
-  if (!search) {
-    setFilteredEvents(events);
-    return;
-  }
+  // filter events whenever search text changes
+  useEffect(() => {
+    if (!search) {
+      setFilteredEvents(events);
+      return;
+    }
 
-  const keywords = search.toLowerCase().split(" ");
+    const keywords = search.toLowerCase().split(" ");
 
-  const filtered = events.filter((item) => {
-    const searchableText = `
-      ${item.name}
-      ${item.type.replace("_", " ")}
-      ${item.city}
-      ${item.state}
-      ${item.description}
-    `.toLowerCase();
+    const filtered = events.filter((item) => {
+      const searchableText = `
+        ${item.name}
+        ${item.type?.replace("_", " ") || ""}
+        ${item.city || ""}
+        ${item.state || ""}
+        ${item.description || ""}
+      `.toLowerCase();
 
-    return keywords.some((word) =>
-      searchableText.includes(word)
-    );
-  });
+      return keywords.some((word) => searchableText.includes(word));
+    });
 
-  setFilteredEvents(filtered);
-}, [search, events]);
+    setFilteredEvents(filtered);
+  }, [search, events]);
 
- //move map function when user clicks on search result or category (not fully implemented yet, but will be used for that)
-   const moveToEvent = (event) => {
-  if (!event || !currentLocation.current) return;
+  // move map to a selected event
+  const moveToEvent = (event) => {
+    if (!event || !currentLocation.current) return;
 
-  console.log("MOVING TO:", event.city, event.state);
+    console.log("MOVING TO:", event.city, event.state);
 
-  currentLocation.current.animateToRegion({
-    latitude: event.latitude,
-    longitude: event.longitude,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-};
+    currentLocation.current.animateToRegion({
+      latitude: event.latitude,
+      longitude: event.longitude,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    });
+  };
 
-//this will get the user back to their home location
-const moveToUserLocation = () => {
-  if (!latitude || !longitude || !currentLocation.current) return;
+  // move map back to the user's current location
+  const moveToUserLocation = () => {
+    if (!latitude || !longitude || !currentLocation.current) return;
 
-  console.log("MOVING TO USER LOCATION");
+    console.log("MOVING TO USER LOCATION");
 
-  currentLocation.current.animateToRegion({
-    latitude, 
-    longitude,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  });
-};
+    currentLocation.current.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
+    });
+  };
 
-const handleSearchSubmit = () => {
+  // search submit first tries matching a known location, then falls back to first matching event
+  const handleSearchSubmit = () => {
+    if (!search || !currentLocation.current) return;
 
-  if (!search || !currentLocation.current) return;
+    const lowerSearch = search.toLowerCase();
+    const cleanSearch = lowerSearch.trim();
 
-  const lowerSearch = search.toLowerCase();
+    let locationMatch = locations.find((loc) => {
+      const city = loc.name?.toLowerCase().trim();
+      const state = loc.state?.toLowerCase().trim();
 
-  let locationMatch = null;
-//check actual locations  
-  const cleanSearch = lowerSearch.trim();
+      return (
+        cleanSearch === city ||
+        cleanSearch === `${city} ${state}` ||
+        cleanSearch.includes(city)
+      );
+    });
 
-  locationMatch = locations.find((loc) => {
-    const city = loc.name?.toLowerCase().trim();
-    const state = loc.state?.toLowerCase().trim();
+    if (locationMatch) {
+      console.log("MOVING TO LOCATION:", locationMatch.name);
 
-    return (
-      cleanSearch === city ||
-      cleanSearch === `${city} ${state}` ||
-      cleanSearch.includes(city)
-    );
-  });
+      currentLocation.current.animateToRegion({
+        latitude: locationMatch.latitude,
+        longitude: locationMatch.longitude,
+        latitudeDelta: 0.2,
+        longitudeDelta: 0.2,
+      });
+      return;
+    }
 
-if (locationMatch) {
-  console.log("MOVING TO LOCATION:", locationMatch.city);
+    // if no city match is found, move to the first matching event
+    if (filteredEvents.length > 0) {
+      moveToEvent(filteredEvents[0]);
+    }
+  };
 
-  currentLocation.current.animateToRegion({
-    latitude: locationMatch.latitude,
-    longitude: locationMatch.longitude,
-    latitudeDelta: 0.2,
-    longitudeDelta: 0.2,
-  });
-  return; // stop after city match 
-}
-// if no city match, try event 
-if (filteredEvents.length > 0) {
-  moveToEvent(filteredEvents[0]);
-}
-};
-  //Google Map background
   return (
     <SafeAreaView style={styles.container}>
-      {
-        <MapView
-          ref={currentLocation}
-          provider={PROVIDER_GOOGLE}
-          style={StyleSheet.absoluteFillObject}
-          initialRegion={{
-            latitude: latitude || 35.0458, // Chattanooga placeholder
-            longitude: longitude || -85.3094,
-            latitudeDelta: 0.05,
-            longitudeDelta: 0.05,
-          }}
-        >
-          {/*EXAMPLE MAP MARKERS FOR EVENTS/FOOD TRUCKS*/}
+      <MapView
+        ref={currentLocation}
+        provider={PROVIDER_GOOGLE}
+        style={StyleSheet.absoluteFillObject}
+        region={
+  latitude && longitude
+    ? {
+        latitude,
+        longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }
+    : {
+        latitude: 35.0458,
+        longitude: -85.3094,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }
+}
+      >
+        {/* event markers from mock event data */}
         {filteredEvents.map((event) => (
           <Marker
             key={event.id}
@@ -207,36 +285,37 @@ if (filteredEvents.length > 0) {
               longitude: event.longitude,
             }}
             title={event.name}
-            description={event.description} 
+            description={event.description}
+	    inColor="purple"
           />
         ))}
-        {/*location markers*/}
+
         {locations.map((loc) => (
+  	 <Marker
+    	   key={loc.id}
+    	   coordinate={{
+	      latitude: loc.latitude,
+	      longitude: loc.longitude,
+    	}}
+    	title={loc.name}
+    	description={loc.description}
+    	pinColor="green"
+  	/>
+	))}
+
+        {/* marker showing the user's current location */}
+        {latitude && longitude && (
           <Marker
-            key={loc.id}
             coordinate={{
-              latitude: loc.latitude,
-              longitude: loc.longitude,
+              latitude,
+              longitude,
             }}
-            title={loc.name}
-            description={loc.state}
-            pinColor="green"
+            title="You are here"
+            pinColor="blue"
           />
-        ))}
-  
-          {/*user location marker*/}
-          {latitude && longitude && (
-            <Marker
-              coordinate={{
-                latitude,
-                longitude,
-              }}
-              title="You are here"
-              pinColor="green"
-            />
-          )}
-        </MapView>
-      }
+        )}
+      </MapView>
+
       <View style={[styles.topWrap, { top: insets.top + 10 }]}>
         <View style={styles.searchRow}>
           <Pressable style={styles.profileButton}>
@@ -251,35 +330,35 @@ if (filteredEvents.length > 0) {
               style={styles.searchIcon}
             />
 
-
             <TextInput
-             value={search}
-             onChangeText={handleSearch}
-             placeholder="Looking for something?"
-             placeholderTextColor="#666"
-             style={styles.searchInput}
-             onFocus={() => setSelected(true)}
-             onBlur={() => setSelected(false)}
-            returnKeyType="search"
-
-             onSubmitEditing={handleSearchSubmit} 
-/>
-
+              value={search}
+              onChangeText={handleSearch}
+              placeholder="Looking for something?"
+              placeholderTextColor="#666"
+              style={styles.searchInput}
+              onFocus={() => setSelected(true)}
+              onBlur={() => setSelected(false)}
+              returnKeyType="search"
+              onSubmitEditing={handleSearchSubmit}
+            />
           </View>
 
-          <Pressable 
-          style={styles.addButton}
-          onPress={() => router.push("/(app)/add-events")}
+          {/* plus button routes the user to the Add Event screen for Sprint 3 testing */}
+          <Pressable
+            style={styles.addButton}
+            onPress={() => router.push("/add-event")}
           >
             <Ionicons name="add" size={26} color="#555" />
           </Pressable>
 
-          <Pressable style={styles.locationButton} onPress={moveToUserLocation}>
+          {/* location button recenters the map on the user's current coordinates */}
+          <Pressable
+            style={styles.locationButton}
+            onPress={moveToUserLocation}
+          >
             <Ionicons name="locate-outline" size={22} color="#111" />
           </Pressable>
         </View>
-
-
 
         {selected && (
           <View style={styles.dropdown}>
@@ -309,16 +388,26 @@ if (filteredEvents.length > 0) {
       </View>
 
       {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
-
     </SafeAreaView>
   );
 }
 
-//styles
+// styles
 const styles = StyleSheet.create({
   container: {
-    flex: 1, justifyContent: "center", alignItems: "center", padding: 16 },
-    errorText: { color: "red", marginBottom: 10},
+    flex: 1,
+  },
+
+  errorText: {
+    position: "absolute",
+    bottom: 20,
+    alignSelf: "center",
+    color: "red",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
 
   topWrap: {
     position: "absolute",
@@ -342,6 +431,15 @@ const styles = StyleSheet.create({
   },
 
   addButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "rgba(255,255,255,0.95)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  locationButton: {
     width: 46,
     height: 46,
     borderRadius: 23,
@@ -392,5 +490,4 @@ const styles = StyleSheet.create({
   resultItem: {
     paddingVertical: 6,
   },
-
 });
