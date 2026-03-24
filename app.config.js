@@ -12,13 +12,17 @@ export default {
     newArchEnabled: false,
 
     ios: {
-      bundleIdentifier: "com.Foodtruck.deni",  //changed
-      supportsTablet: true,
-      googleServicesFile: "./GoogleService-Info.plist",
-      config: {
-        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
-      },
-    },
+  	bundleIdentifier: "com.Foodtruck.deni",
+  	supportsTablet: true,
+  	googleServicesFile: "./GoogleService-Info.plist",
+  	infoPlist: {
+   	 NSLocationWhenInUseUsageDescription:
+      	"Deni uses your location to show nearby food trucks and events.",
+ 	},
+	config: {
+	    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+	  },
+	},
 
     android: {
       package: "com.Foodtruck.deni", //changed

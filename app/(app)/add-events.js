@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
 import { ref, push, set } from "firebase/database";
-import { auth, db } from "../lib/firebase"; // **** adjust path if needed
+import { auth, db } from "../../lib/firebase"; // **** adjust path if needed
 
 export default function AddEvent() {
   const [title, setTitle] = useState("");
