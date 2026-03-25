@@ -36,15 +36,25 @@ export default function TabLayout() {
         }}
       />
 
-          <Tabs.Screen
-            name="add-events"
-            options={{
-              title: "Add Event",
-              tabBarIcon: ({ color, size }) => (
-                <AntDesign name="plus-circle" size={size} color={color} />
-              ),
-            }}
-          />
+      <Tabs.Screen
+        name="add-events"
+        options={{
+          title: "Add Event",
+          tabBarIcon: ({ color, size }) => (
+            <AntDesign name="plus-circle" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="add-trucks"
+        options={{
+          title: "Add Truck",
+          tabBarIcon: ({ color, size }) => (
+            <AntDesign name="truck" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

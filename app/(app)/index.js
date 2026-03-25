@@ -117,47 +117,60 @@ export default function HomePage() {
       return () => unsubscribe();
     }, []);
 
-  // live read for trucks
-  useEffect(() => {
-    const trucksRef = ref(db, "trucks");
+    useEffect(() => {
+      console.log("TRUCK EFFECT RAN");
 
-    const unsubscribe = onValue(trucksRef, (snapshot) => {
-      console.log("TRUCK SNAPSHOT EXISTS:", snapshot.exists());
-      console.log("RAW TRUCK DATA:", snapshot.val());
+      const trucksRef = ref(db, "trucks");
+      console.log("TRUCK REF PATH:", "trucks");
 
-      const data = snapshot.val();
+      const unsubscribe = onValue(
+        trucksRef,
+        (snapshot) => {
+          console.log("TRUCK SNAPSHOT EXISTS:", snapshot.exists());
 
-      if (!data) {
-        console.log("NO TRUCKS FOUND");
-        setLocations([]);
-        return;
-      }
+          const data = snapshot.val();
+          console.log("RAW TRUCK DATA:", data);
 
-      const loadedTrucks = Object.keys(data)
-        .map((id) => {
-          const item = data[id];
+          if (!data) {
+            console.log("NO TRUCKS FOUND");
+            setLocations([]);
+            return;
+          }
 
-          return {
-            id,
-            name: item.name || "Unnamed Truck",
-            description: item.description || "",
-            latitude: item.location?.lat,
-            longitude: item.location?.lng,
-            type: "food_truck",
-          };
-        })
-        .filter(
-          (item) =>
-            typeof item.latitude === "number" &&
-            typeof item.longitude === "number"
-        );
+          const loadedTrucks = Object.keys(data)
+            .map((id) => {
+              const item = data[id];
 
-      console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
-      setLocations(loadedTrucks);
-    });
+              const lat = item.location?.lat ?? item.latitude ?? item.lat;
+              const lng = item.location?.lng ?? item.longitude ?? item.lng;
 
-    return () => unsubscribe();
-  }, []);
+              return {
+                id,
+                name: item.name || item.title || "Unnamed Truck",
+                description: item.description || "",
+                latitude: typeof lat === "string" ? Number(lat) : lat,
+                longitude: typeof lng === "string" ? Number(lng) : lng,
+                type: "food_truck",
+              };
+            })
+            .filter(
+              (item) =>
+                typeof item.latitude === "number" &&
+                !Number.isNaN(item.latitude) &&
+                typeof item.longitude === "number" &&
+                !Number.isNaN(item.longitude)
+            );
+
+          console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
+          setLocations(loadedTrucks);
+        },
+        (error) => {
+          console.log("TRUCK READ ERROR:", error);
+        }
+      );
+
+      return () => unsubscribe();
+    }, []);
 
   // log events for debugging while developing
   useEffect(() => {
