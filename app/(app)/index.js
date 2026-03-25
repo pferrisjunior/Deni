@@ -12,18 +12,15 @@ import {
   Pressable,
 } from "react-native";
 
-import { ref, onValue } from "firebase/database";
-import { db } from "../../lib/firebase";
-
 import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 
+// firebase imports
+import { ref, onValue } from "firebase/database";
+import { db, auth } from "../../lib/firebase";
+
 // custom hook for getting the user's current location
 import useUserLocation from "../../hooks/userLocation";
-
-// temporary mock data until backend is connected
-//import mockEvents from "../../data/mockEvents";
-//import mockLocations from "../../data/mockLocations";
 
 // safe area tools so the top UI does not go under the iPhone notch/status bar
 import {
@@ -49,22 +46,10 @@ export default function HomePage() {
   // current user location from custom hook
   const { latitude, longitude, errorMessage } = useUserLocation();
 
-  // mock data state until backend is wired in
+  // live data state from Firebase
   const [events, setEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [locations, setLocations] = useState([]);
-
-  // optional helper for expanding state abbreviations if needed later
-  const getFullStateName = (abbr) => {
-    if (!abbr) return "";
-
-    const states = {
-      tx: "texas",
-      tn: "tennessee",
-    };
-
-    return states[abbr.toLowerCase()] || "";
-  };
 
   // when user location becomes available, animate map to that region
   useEffect(() => {
@@ -72,11 +57,107 @@ export default function HomePage() {
       currentLocation.current.animateToRegion({
         latitude,
         longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
+        latitudeDelta: 0.2,
+        longitudeDelta: 0.2,
       });
     }
   }, [latitude, longitude]);
+
+  // log auth state for debugging
+  useEffect(() => {
+    console.log("CURRENT USER UID:", auth.currentUser?.uid);
+  }, []);
+
+    // live read for events
+    useEffect(() => {
+      const eventsRef = ref(db, "events");
+
+      const unsubscribe = onValue(
+        eventsRef,
+        (snapshot) => {
+          console.log("EVENT SNAPSHOT EXISTS:", snapshot.exists());
+
+          const data = snapshot.val();
+          console.log("RAW EVENT DATA:", data);
+
+          if (!data) {
+            console.log("NO EVENTS FOUND");
+            setEvents([]);
+            setFilteredEvents([]);
+            return;
+          }
+
+          const loadedEvents = Object.keys(data).map((id) => {
+            const item = data[id];
+
+            return {
+              id,
+              name: item.title || "Untitled Event",
+              description: item.description || "",
+              latitude: item.location?.lat ?? null,
+              longitude: item.location?.lng ?? null,
+              city: item.location?.name || "",
+              state: "",
+              type: "event",
+              startTime: item.startTime || null,
+              endTime: item.endTime || null,
+              createdByUid: item.createdByUid || null,
+            };
+          });
+
+          console.log("LOADED EVENTS FROM DB:", loadedEvents);
+          setEvents(loadedEvents);
+          setFilteredEvents(loadedEvents);
+        },
+        (error) => {
+          console.log("EVENT READ ERROR:", error);
+        }
+      );
+
+      return () => unsubscribe();
+    }, []);
+
+  // live read for trucks
+  useEffect(() => {
+    const trucksRef = ref(db, "trucks");
+
+    const unsubscribe = onValue(trucksRef, (snapshot) => {
+      console.log("TRUCK SNAPSHOT EXISTS:", snapshot.exists());
+      console.log("RAW TRUCK DATA:", snapshot.val());
+
+      const data = snapshot.val();
+
+      if (!data) {
+        console.log("NO TRUCKS FOUND");
+        setLocations([]);
+        return;
+      }
+
+      const loadedTrucks = Object.keys(data)
+        .map((id) => {
+          const item = data[id];
+
+          return {
+            id,
+            name: item.name || "Unnamed Truck",
+            description: item.description || "",
+            latitude: item.location?.lat,
+            longitude: item.location?.lng,
+            type: "food_truck",
+          };
+        })
+        .filter(
+          (item) =>
+            typeof item.latitude === "number" &&
+            typeof item.longitude === "number"
+        );
+
+      console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
+      setLocations(loadedTrucks);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // log events for debugging while developing
   useEffect(() => {
@@ -87,79 +168,6 @@ export default function HomePage() {
   useEffect(() => {
     console.log("FILTERED EVENTS:", filteredEvents);
   }, [filteredEvents]);
-
-useEffect(() => {
-  const eventsRef = ref(db, "events");
-
-  const unsubscribe = onValue(eventsRef, (snapshot) => {
-    const data = snapshot.val();
-
-    if (!data) {
-      setEvents([]);
-      return;
-    }
-
-    const loadedEvents = Object.keys(data).map((id) => {
-      const item = data[id];
-
-      return {
-        id,
-        name: item.title || "Untitled Event",
-        description: item.description || "",
-        latitude: item.location?.lat,
-        longitude: item.location?.lng,
-        city: item.location?.name || "",
-        state: "",
-        type: "event",
-        startTime: item.startTime || null,
-        endTime: item.endTime || null,
-        createdByUid: item.createdByUid || null,
-      };
-    }).filter(
-      (item) =>
-        typeof item.latitude === "number" &&
-        typeof item.longitude === "number"
-    );
-
-    console.log("LOADED EVENTS FROM DB:", loadedEvents);
-    setEvents(loadedEvents);
-     });
-
-    return () => unsubscribe();
-    }, []);
-useEffect(() => {
-  const locationsRef = ref(db, "trucks");
-
-  const unsubscribe = onValue(locationsRef, (snapshot) => {
-    const data = snapshot.val();
-
-    if (!data) {
-      setLocations([]);
-      return;
-    }
-
-    const loadedLocations = Object.keys(data).map((id) => {
-      const item = data[id];
-
-      return {
-        id,
-        name: item.title || item.name || "Location",
-        state: item.state || "",
-        latitude: item.lat,
-        longitude: item.lng,
-      };
-    }).filter(
-      (item) =>
-        typeof item.latitude === "number" &&
-        typeof item.longitude === "number"
-    );
-
-    console.log("LOADED LOCATIONS FROM DB:", loadedLocations);
-    setLocations(loadedLocations);
-  });
-
-  return () => unsubscribe();
-  }, []);
 
   // store what user is typing into the search bar
   const handleSearch = (text) => {
@@ -199,8 +207,8 @@ useEffect(() => {
     currentLocation.current.animateToRegion({
       latitude: event.latitude,
       longitude: event.longitude,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
+      latitudeDelta: 0.2,
+      longitudeDelta: 0.2,
     });
   };
 
@@ -213,12 +221,12 @@ useEffect(() => {
     currentLocation.current.animateToRegion({
       latitude,
       longitude,
-      latitudeDelta: 0.05,
-      longitudeDelta: 0.05,
+      latitudeDelta: 0.2,
+      longitudeDelta: 0.2,
     });
   };
 
-  // search submit first tries matching a known location, then falls back to first matching event
+  // search submit first tries matching a known truck name or event, then falls back to first matching event
   const handleSearchSubmit = () => {
     if (!search || !currentLocation.current) return;
 
@@ -226,14 +234,8 @@ useEffect(() => {
     const cleanSearch = lowerSearch.trim();
 
     let locationMatch = locations.find((loc) => {
-      const city = loc.name?.toLowerCase().trim();
-      const state = loc.state?.toLowerCase().trim();
-
-      return (
-        cleanSearch === city ||
-        cleanSearch === `${city} ${state}` ||
-        cleanSearch.includes(city)
-      );
+      const name = loc.name?.toLowerCase().trim();
+      return cleanSearch === name || cleanSearch.includes(name);
     });
 
     if (locationMatch) {
@@ -248,7 +250,7 @@ useEffect(() => {
       return;
     }
 
-    // if no city match is found, move to the first matching event
+    // if no truck match is found, move to the first matching event
     if (filteredEvents.length > 0) {
       moveToEvent(filteredEvents[0]);
     }
@@ -260,48 +262,45 @@ useEffect(() => {
         ref={currentLocation}
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFillObject}
-        region={
-  latitude && longitude
-    ? {
-        latitude,
-        longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      }
-    : {
-        latitude: 35.0458,
-        longitude: -85.3094,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      }
-}
+        initialRegion={{
+          latitude: latitude || 35.0458,
+          longitude: longitude || -85.3094,
+          latitudeDelta: 0.2,
+          longitudeDelta: 0.2,
+        }}
       >
-        {/* event markers from mock event data */}
-        {filteredEvents.map((event) => (
+        {/* event markers from Firebase event data */}
+          {filteredEvents
+            .filter(
+              (event) =>
+                typeof event.latitude === "number" &&
+                typeof event.longitude === "number"
+            )
+            .map((event) => (
+              <Marker
+                key={event.id}
+                coordinate={{
+                  latitude: event.latitude,
+                  longitude: event.longitude,
+                }}
+                title={event.name}
+                description={event.description}
+              />
+            ))}
+
+        {/* truck markers from Firebase truck data */}
+        {locations.map((loc) => (
           <Marker
-            key={event.id}
+            key={loc.id}
             coordinate={{
-              latitude: event.latitude,
-              longitude: event.longitude,
+              latitude: loc.latitude,
+              longitude: loc.longitude,
             }}
-            title={event.name}
-            description={event.description}
-	    inColor="purple"
+            title={loc.name}
+            description={loc.description}
+            pinColor="green"
           />
         ))}
-
-        {locations.map((loc) => (
-  	 <Marker
-    	   key={loc.id}
-    	   coordinate={{
-	      latitude: loc.latitude,
-	      longitude: loc.longitude,
-    	}}
-    	title={loc.name}
-    	description={loc.description}
-    	pinColor="green"
-  	/>
-	))}
 
         {/* marker showing the user's current location */}
         {latitude && longitude && (
@@ -343,15 +342,13 @@ useEffect(() => {
             />
           </View>
 
-          {/* plus button routes the user to the Add Event screen for Sprint 3 testing */}
           <Pressable
             style={styles.addButton}
-            onPress={() => router.push("/add-event")}
+            onPress={() => router.push("/(app)/add-events")}
           >
             <Ionicons name="add" size={26} color="#555" />
           </Pressable>
 
-          {/* location button recenters the map on the user's current coordinates */}
           <Pressable
             style={styles.locationButton}
             onPress={moveToUserLocation}
@@ -387,7 +384,9 @@ useEffect(() => {
         )}
       </View>
 
-      {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+      {errorMessage ? (
+        <Text style={styles.errorText}>{errorMessage}</Text>
+      ) : null}
     </SafeAreaView>
   );
 }
