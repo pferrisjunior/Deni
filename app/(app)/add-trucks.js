@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -19,9 +19,18 @@ export default function AddTruck() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
 
+  useEffect(() => {
+    if (!auth.currentUser) {
+      Alert.alert("Account required", "Please sign in first.");
+    }
+  }, []);
+
   const handleSubmit = async () => {
+    console.log("ADD TRUCK SUBMIT PRESSED");
+
     try {
       const uid = auth.currentUser?.uid;
+      console.log("CURRENT USER UID:", uid);
 
       if (!uid) {
         throw new Error("User not authenticated");
@@ -34,6 +43,24 @@ export default function AddTruck() {
       const trimmedLatitude = latitude.trim();
       const trimmedLongitude = longitude.trim();
 
+      console.log("RAW FORM VALUES:", {
+        name,
+        foodType,
+        description,
+        menuLink,
+        latitude,
+        longitude,
+      });
+
+      console.log("TRIMMED FORM VALUES:", {
+        trimmedName,
+        trimmedFoodType,
+        trimmedDescription,
+        trimmedMenuLink,
+        trimmedLatitude,
+        trimmedLongitude,
+      });
+
       if (!trimmedName || !trimmedLatitude || !trimmedLongitude) {
         Alert.alert(
           "Missing fields",
@@ -44,6 +71,11 @@ export default function AddTruck() {
 
       const parsedLat = Number(trimmedLatitude);
       const parsedLng = Number(trimmedLongitude);
+
+      console.log("PARSED COORDINATES:", {
+        parsedLat,
+        parsedLng,
+      });
 
       if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng)) {
         Alert.alert(
@@ -79,8 +111,9 @@ export default function AddTruck() {
       }
 
       const truckRef = push(ref(db, "trucks"));
+      console.log("NEW TRUCK REF KEY:", truckRef.key);
 
-      await set(truckRef, {
+      const payload = {
         name: trimmedName,
         foodType: trimmedFoodType,
         description: trimmedDescription,
@@ -88,12 +121,20 @@ export default function AddTruck() {
         ownerUid: uid,
         createdByUid: uid,
         createdAt: Date.now(),
+        updatedAt: Date.now(),
         type: "food_truck",
+        isVerified: false,
         location: {
           lat: parsedLat,
           lng: parsedLng,
         },
-      });
+      };
+
+      console.log("WRITING TRUCK PAYLOAD:", payload);
+
+      await set(truckRef, payload);
+
+      console.log("TRUCK WRITE SUCCESS:", truckRef.key);
 
       Alert.alert("Success", "Truck created!");
 
@@ -104,6 +145,7 @@ export default function AddTruck() {
       setLatitude("");
       setLongitude("");
     } catch (err) {
+      console.log("ADD TRUCK ERROR:", err);
       Alert.alert(
         "Error",
         err?.message || "Something went wrong while creating the truck"
@@ -112,7 +154,11 @@ export default function AddTruck() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.header}>Add Truck</Text>
       <Text style={styles.subheader}>Create a new truck for Deni</Text>
 
@@ -180,6 +226,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
+    paddingBottom: 160,
     backgroundColor: "#E6C79C",
   },
   header: {

@@ -1,9 +1,34 @@
-// tools
-import React from "react";
-import { Tabs } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Tabs, router } from "expo-router";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { Pressable, Alert } from "react-native";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../../lib/firebase";
 
 export default function TabLayout() {
+  const [user, setUser] = useState(auth.currentUser);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+    });
+
+    return unsub;
+  }, []);
+
+  const requireAuth = (path) => {
+    if (!user) {
+      Alert.alert(
+        "Account required",
+        "Please create an account or sign in to use this feature."
+      );
+      router.push("/login"); // change this if your auth route is different
+      return;
+    }
+
+    router.push(path);
+  };
+
   return (
     <Tabs screenOptions={{ headerShown: false }}>
       <Tabs.Screen
@@ -31,7 +56,21 @@ export default function TabLayout() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="user" size={size} color={color} />
+            <AntDesign
+              name="user"
+              size={size}
+              color={user ? color : "#9CA3AF"}
+            />
+          ),
+          tabBarLabelStyle: {
+            color: user ? undefined : "#9CA3AF",
+          },
+          tabBarButton: (props) => (
+            <Pressable
+              {...props}
+              onPress={() => requireAuth("/profile")}
+              style={[props.style, !user && { opacity: 0.65 }]}
+            />
           ),
         }}
       />
@@ -41,7 +80,21 @@ export default function TabLayout() {
         options={{
           title: "Add Event",
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="plus-circle" size={size} color={color} />
+            <AntDesign
+              name="plus-circle"
+              size={size}
+              color={user ? color : "#9CA3AF"}
+            />
+          ),
+          tabBarLabelStyle: {
+            color: user ? undefined : "#9CA3AF",
+          },
+          tabBarButton: (props) => (
+            <Pressable
+              {...props}
+              onPress={() => requireAuth("/add-events")}
+              style={[props.style, !user && { opacity: 0.65 }]}
+            />
           ),
         }}
       />
@@ -51,7 +104,21 @@ export default function TabLayout() {
         options={{
           title: "Add Truck",
           tabBarIcon: ({ color, size }) => (
-            <AntDesign name="truck" size={size} color={color} />
+            <AntDesign
+              name="truck"
+              size={size}
+              color={user ? color : "#9CA3AF"}
+            />
+          ),
+          tabBarLabelStyle: {
+            color: user ? undefined : "#9CA3AF",
+          },
+          tabBarButton: (props) => (
+            <Pressable
+              {...props}
+              onPress={() => requireAuth("/add-trucks")}
+              style={[props.style, !user && { opacity: 0.65 }]}
+            />
           ),
         }}
       />

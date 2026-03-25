@@ -5,6 +5,8 @@ import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-nativ
 import { ref, push, set } from "firebase/database";
 import { auth, db } from "../../lib/firebase"; // **** adjust path if needed
 
+
+
 export default function AddEvent() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
