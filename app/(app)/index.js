@@ -187,16 +187,22 @@ export default function HomePage() {
     setSearch(text);
   };
 
+  // combine data fields of events and food trucks before filtering
+  const combinedData = [...events, ...locations];
+
+
   // filter events whenever search text changes
   useEffect(() => {
-    if (!search) {
-      setFilteredEvents(events);
+    const cleanSearch = search.toLowerCase().trim();
+
+    const allData = [...events, ...locations];
+
+    if (cleanSearch.length === 0) {
+      setFilteredEvents(allData);
       return;
     }
 
-    const keywords = search.toLowerCase().split(" ");
-
-    const filtered = events.filter((item) => {
+    const filtered = allData.filter((item) => {
       const searchableText = `
         ${item.name}
         ${item.type?.replace("_", " ") || ""}
@@ -205,11 +211,11 @@ export default function HomePage() {
         ${item.description || ""}
       `.toLowerCase();
 
-      return keywords.some((word) => searchableText.includes(word));
+      return searchableText.includes(cleanSearch);
     });
 
     setFilteredEvents(filtered);
-  }, [search, events]);
+  }, [search, events, locations]);
 
   // move map to a selected event
   const moveToEvent = (event) => {
