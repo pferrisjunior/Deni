@@ -4,7 +4,7 @@ import { AppText } from "../../components/AppText";
 import { View, StyleSheet } from "react-native";
 import { useState, useEffect } from "react";
 import { FlatList, Text } from "react-native";
-import mockEvents from "../../data/mockEvents";
+
 
 ////export of event screen
 export default function EventScreen() {
