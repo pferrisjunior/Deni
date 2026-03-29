@@ -43,6 +43,85 @@ export default function HomePage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(false);
 
+const handleSearchSubmit = () => {
+  if (!search.trim()) return;
+
+  const cleanSearch = search.toLowerCase().trim();
+  const allData = [...events, ...locations];
+
+  const filtered = allData.filter((item) => {
+    const searchableText = `
+      ${item?.name || ""}
+      ${item?.type || ""}
+      ${item?.city || ""}
+      ${item?.state || ""}
+      ${item?.description || ""}
+    `.toLowerCase();
+
+    return searchableText.includes(cleanSearch);
+  });
+
+  setFilteredEvents(filtered);
+
+  // move map
+  if (filtered.length > 0) {
+    const first = filtered[0];
+
+    if (
+      typeof first.latitude === "number" &&
+      typeof first.longitude === "number"
+    ) {
+      currentLocation.current?.animateToRegion({
+        latitude: first.latitude,
+        longitude: first.longitude,
+        latitudeDelta: 0.2,
+        longitudeDelta: 0.2,
+      });
+    }
+  }
+};
+
+
+const getStatus = (event) => {
+  if (event.type === "food_truck") return "active";
+
+  if (!event.startTime || !event.endTime) return "inactive";
+
+  const now = new Date();
+  const startDate = new Date(event.startTime);
+  const endDate = new Date(event.endTime);
+
+  if (now > endDate) return "inactive";
+  if (now >= startDate) return "active";
+  return "future";
+};
+
+//opacity levels for different event statuses
+const getOpacity = (status) => {
+  if (status === "active") return 1;
+  if (status === "future") return 0.4;
+  return 0.15;
+};
+
+
+// color coding for different marker types
+const TYPE_COLORS = {
+  event: "#3B82F6",       // blue
+  food_truck: "#F59E0B",  // orange
+};
+
+const moveToUserLocation = () => {
+  if (!latitude || !longitude || !currentLocation.current) return;
+
+  currentLocation.current.animateToRegion({
+    latitude,
+    longitude,
+    latitudeDelta: 0.2,
+    longitudeDelta: 0.2,
+  });
+};
+
+
   // current user location from custom hook
   const { latitude, longitude, errorMessage } = useUserLocation();
 
@@ -191,89 +270,6 @@ export default function HomePage() {
   const combinedData = [...events, ...locations];
 
 
-  // filter events whenever search text changes
-  useEffect(() => {
-    const cleanSearch = search.toLowerCase().trim();
-
-    const allData = [...events, ...locations];
-
-    if (cleanSearch.length === 0) {
-      setFilteredEvents(allData);
-      return;
-    }
-
-    const filtered = allData.filter((item) => {
-      const searchableText = `
-        ${item.name}
-        ${item.type?.replace("_", " ") || ""}
-        ${item.city || ""}
-        ${item.state || ""}
-        ${item.description || ""}
-      `.toLowerCase();
-
-      return searchableText.includes(cleanSearch);
-    });
-
-    setFilteredEvents(filtered);
-  }, [search, events, locations]);
-
-  // move map to a selected event
-  const moveToEvent = (event) => {
-    if (!event || !currentLocation.current) return;
-
-    console.log("MOVING TO:", event.city, event.state);
-
-    currentLocation.current.animateToRegion({
-      latitude: event.latitude,
-      longitude: event.longitude,
-      latitudeDelta: 0.2,
-      longitudeDelta: 0.2,
-    });
-  };
-
-  // move map back to the user's current location
-  const moveToUserLocation = () => {
-    if (!latitude || !longitude || !currentLocation.current) return;
-
-    console.log("MOVING TO USER LOCATION");
-
-    currentLocation.current.animateToRegion({
-      latitude,
-      longitude,
-      latitudeDelta: 0.2,
-      longitudeDelta: 0.2,
-    });
-  };
-
-  // search submit first tries matching a known truck name or event, then falls back to first matching event
-  const handleSearchSubmit = () => {
-    if (!search || !currentLocation.current) return;
-
-    const lowerSearch = search.toLowerCase();
-    const cleanSearch = lowerSearch.trim();
-
-    let locationMatch = locations.find((loc) => {
-      const name = loc.name?.toLowerCase().trim();
-      return cleanSearch === name || cleanSearch.includes(name);
-    });
-
-    if (locationMatch) {
-      console.log("MOVING TO LOCATION:", locationMatch.name);
-
-      currentLocation.current.animateToRegion({
-        latitude: locationMatch.latitude,
-        longitude: locationMatch.longitude,
-        latitudeDelta: 0.2,
-        longitudeDelta: 0.2,
-      });
-      return;
-    }
-
-    // if no truck match is found, move to the first matching event
-    if (filteredEvents.length > 0) {
-      moveToEvent(filteredEvents[0]);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -295,7 +291,10 @@ export default function HomePage() {
                 typeof event.latitude === "number" &&
                 typeof event.longitude === "number"
             )
-            .map((event) => (
+            .map((event) => {
+              const status = getStatus(event);
+
+              return (
               <Marker
                 key={event.id}
                 coordinate={{
@@ -304,22 +303,11 @@ export default function HomePage() {
                 }}
                 title={event.name}
                 description={event.description}
+                pinColor={TYPE_COLORS[event.type] || "gray"}
+                style={{ opacity: getOpacity(status)}}
               />
-            ))}
-
-        {/* truck markers from Firebase truck data */}
-        {locations.map((loc) => (
-          <Marker
-            key={loc.id}
-            coordinate={{
-              latitude: loc.latitude,
-              longitude: loc.longitude,
-            }}
-            title={loc.name}
-            description={loc.description}
-            pinColor="green"
-          />
-        ))}
+            );
+          })}
 
         {/* marker showing the user's current location */}
         {latitude && longitude && (
