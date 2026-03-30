@@ -86,13 +86,15 @@ export default function AddEvent() {
             console.log("db value:", db);
             console.log("db type:", typeof db);
             const eventRef = push(ref(db, "events"));
-            //make the change here when I complete geocoding.
             await set(eventRef, {
                 title,
                 description,
                 startTime: startTime.getTime(),
                 endTime: endTime.getTime(),
+                ownerUid: uid,
                 createdByUid: uid,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
                 location: {
                     lat,
                     lng

@@ -11,6 +11,10 @@ import {
 } from "react-native";
 import { ref, push, set } from "firebase/database";
 import { auth, db } from "../../lib/firebase";
+import { Platform } from "react-native";
+import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import useGeocoding from "../../hooks/useGeocoding";
 
 export default function AddTruck() {
   const [name, setName] = useState("");
@@ -20,103 +24,85 @@ export default function AddTruck() {
   const [endTime, setEndTime] = useState(null);
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
-  const [active, setActive] = useState("")
+  const [active, setActive] = useState(false)
   const [address, setAddress] = useState("");
   const { geocode, loading, error } = useGeocoding();
-  const [showDropdown, setShowDropdown] = useState(false);
   const handleStartPress = () => {
-      if (Platform.OS === "android") {
-          DateTimePickerAndroid.open({
-              value: startTime || new Date(),
-              mode: "datetime",
-              is24Hour: true,
-              onChange: (event, selectedDate) => {
-                  if (!event || event.type === "dismissed") return;
-                  if (selectedDate) setStartTime(selectedDate);
-              },
-          });
-      } else {
-          setShowStart(true);
-      }
-  };
-  
-  const handleEndPress = () => {
-      if (Platform.OS === "android") {
-          DateTimePickerAndroid.open({
-              value: endTime || new Date(),
-              mode: "datetime",
-              is24Hour: true,
-              onChange: (event, selectedDate) => {
-                  if (!event || event.type === "dismissed") return;
-                  if (!selectedDate) return;
-  
-                  if (startTime && selectedDate <= startTime) {
-                      Alert.alert("Invalid time", "End must be after start");
-                      return;
-                  }
-  
-                  setEndTime(selectedDate);
-              },
-          });
-      } else {
-          setShowEnd(true);
-      }
-    };
-
-  useEffect(() => {
-    if (!auth.currentUser) {
-      Alert.alert("Account required", "Please sign in first.");
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: startTime || new Date(),
+        mode: "datetime",
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (!event || event.type === "dismissed") return;
+          if (selectedDate) setStartTime(selectedDate);
+        },
+      });
+    } else {
+      setShowStart(true);
     }
-  }, []);
+  };
+
+  const handleEndPress = () => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: endTime || new Date(),
+        mode: "datetime",
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (!event || event.type === "dismissed") return;
+          if (!selectedDate) return;
+
+          if (startTime && selectedDate <= startTime) {
+            Alert.alert("Invalid time", "End must be after start");
+            return;
+          }
+
+          setEndTime(selectedDate);
+        },
+      });
+    } else {
+      setShowEnd(true);
+    }
+  };
 
   const handleSubmit = async () => {
-    console.log("ADD TRUCK SUBMIT PRESSED");
-
     try {
       const uid = auth.currentUser?.uid;
-      console.log("CURRENT USER UID:", uid);
+      if (!uid) throw new Error("User not authenticated");
 
-      if (!uid) {
-        throw new Error("User not authenticated");
-      }
-
-      const trimmedName = name.trim();
-      const trimmedFoodType = foodType.trim();
-      const trimmedDescription = description.trim();
-      const trimmedAddress = address.trim();
-      
-
-      console.log("RAW FORM VALUES:", {
-        name,
-        foodType,
-        description,
-        
-      });
-
-      console.log("TRIMMED FORM VALUES:", {
-        trimmedName,
-        trimmedFoodType,
-        trimmedDescription,
-        
-      });
-
-      if (!trimmedName || !trimmedAddress ) {
+      if (!name || !foodType || !description || !address || !startTime || !endTime) {
         Alert.alert(
           "Missing fields",
-          "Truck name and address required"
+          "All fields are required (name, food type, description, address, start, end)."
         );
         return;
       }
 
-      const truckRef = push(ref(db, "trucks"));
-      console.log("NEW TRUCK REF KEY:", truckRef.key);
+      if (endTime <= startTime) {
+        Alert.alert("Invalid time", "End time must be after start time");
+        return;
+      }
 
+      const result = await geocode(address);
+      if (!result) {
+        Alert.alert("Error", "Could not find that address");
+        return;
+      }
+
+      const { lat, lng } = result;
+
+      if (!lat || !lng) {
+        Alert.alert("Error", "Invalid location returned");
+        return;
+      }
 
       const payload = {
-        name: trimmedName,
-        foodType: trimmedFoodType,
-        description: trimmedDescription,
-        menuLink: trimmedMenuLink,
+        name,
+        foodType,
+        description,
+        address,
+        active,
         ownerUid: uid,
         createdByUid: uid,
         createdAt: Date.now(),
@@ -124,25 +110,26 @@ export default function AddTruck() {
         type: "food_truck",
         isVerified: false,
         location: {
-          lat: parsedLat,
-          lng: parsedLng,
+          lat,
+          lng,
         },
+        startTime: startTime.getTime(),
+        endTime: endTime.getTime(),
       };
 
-      console.log("WRITING TRUCK PAYLOAD:", payload);
-
+      const truckRef = push(ref(db, "trucks"));
       await set(truckRef, payload);
-
-      console.log("TRUCK WRITE SUCCESS:", truckRef.key);
 
       Alert.alert("Success", "Truck created!");
 
       setName("");
       setFoodType("");
       setDescription("");
-      setMenuLink("");
-      setLatitude("");
-      setLongitude("");
+      setAddress("");
+      setStartTime(null);
+      setEndTime(null);
+      setActive(false);
+
     } catch (err) {
       console.log("ADD TRUCK ERROR:", err);
       Alert.alert(
@@ -152,45 +139,99 @@ export default function AddTruck() {
     }
   };
 
-  return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
+
+return (
+  <ScrollView
+    contentContainerStyle={styles.container}
+    keyboardShouldPersistTaps="handled"
+    showsVerticalScrollIndicator={false}
+  >
+    <Text style={styles.header}>Add Truck</Text>
+    <Text style={styles.subheader}>Create a new truck for Deni</Text>
+
+    <Text style={styles.label}>Truck Name</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="Burger Bus"
+      value={name}
+      onChangeText={setName}
+    />
+
+    <Text style={styles.label}>Food Type</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="Tacos, BBQ, Burgers..."
+      value={foodType}
+      onChangeText={setFoodType}
+    />
+
+    <Text style={styles.label}>Description</Text>
+    <TextInput
+      style={[styles.input, styles.multilineInput]}
+      placeholder="Describe the truck or what it serves"
+      value={description}
+      onChangeText={setDescription}
+      multiline
+    />
+    <Text style={styles.label}>Active</Text>
+    <Pressable
+      style={styles.input}
+      onPress={() => setActive(prev => !prev)}
     >
-      <Text style={styles.header}>Add Truck</Text>
-      <Text style={styles.subheader}>Create a new truck for Deni</Text>
+      <Text>{active ? "Yes" : "No"}</Text>
+    </Pressable>
+    <Text style={styles.label}>Address</Text>
+    <TextInput
+      style={styles.input}
+      placeholder="123 Main St"
+      value={address}
+      onChangeText={setAddress}
+    />
+    <Text style={styles.label}>Start Time</Text>
+    <Pressable style={styles.input} onPress={handleStartPress}>
+      <Text>
+        {startTime ? startTime.toLocaleString() : "Select start time"}
+      </Text>
+    </Pressable>
 
-      <Text style={styles.label}>Truck Name</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Burger Bus"
-        value={name}
-        onChangeText={setName}
+    <Text style={styles.label}>End Time</Text>
+    <Pressable style={styles.input} onPress={handleEndPress}>
+      <Text>
+        {endTime ? endTime.toLocaleString() : "Select end time"}
+      </Text>
+    </Pressable>
+    {Platform.OS === "ios" && showStart && (
+      <DateTimePicker
+        value={startTime || new Date()}
+        mode="datetime"
+        display="spinner"
+        onChange={(event, selectedDate) => {
+          if (selectedDate) setStartTime(selectedDate);
+        }}
       />
+    )}
+    {Platform.OS === "ios" && showEnd && (
+      <DateTimePicker
+        value={endTime || new Date()}
+        mode="datetime"
+        display="spinner"
+        onChange={(event, selectedDate) => {
+          if (!selectedDate) return;
 
-      <Text style={styles.label}>Food Type</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Tacos, BBQ, Burgers..."
-        value={foodType}
-        onChangeText={setFoodType}
+          if (startTime && selectedDate <= startTime) {
+            Alert.alert("Invalid time", "End must be after start");
+            return;
+          }
+
+          setEndTime(selectedDate);
+        }}
       />
-
-      <Text style={styles.label}>Description</Text>
-      <TextInput
-        style={[styles.input, styles.multilineInput]}
-        placeholder="Describe the truck or what it serves"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
-
-      <Pressable style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Create Truck</Text>
-      </Pressable>
-    </ScrollView>
-  );
+    )}
+    <Pressable style={styles.button} onPress={handleSubmit}>
+      <Text style={styles.buttonText}>Add a food Truck.</Text>
+    </Pressable>
+  </ScrollView>
+);
 }
 
 const styles = StyleSheet.create({
