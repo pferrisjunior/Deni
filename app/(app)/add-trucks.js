@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -15,9 +16,52 @@ export default function AddTruck() {
   const [name, setName] = useState("");
   const [foodType, setFoodType] = useState("");
   const [description, setDescription] = useState("");
-  const [menuLink, setMenuLink] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [showStart, setShowStart] = useState(false);
+  const [showEnd, setShowEnd] = useState(false);
+  const [active, setActive] = useState("")
+  const [address, setAddress] = useState("");
+  const { geocode, loading, error } = useGeocoding();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const handleStartPress = () => {
+      if (Platform.OS === "android") {
+          DateTimePickerAndroid.open({
+              value: startTime || new Date(),
+              mode: "datetime",
+              is24Hour: true,
+              onChange: (event, selectedDate) => {
+                  if (!event || event.type === "dismissed") return;
+                  if (selectedDate) setStartTime(selectedDate);
+              },
+          });
+      } else {
+          setShowStart(true);
+      }
+  };
+  
+  const handleEndPress = () => {
+      if (Platform.OS === "android") {
+          DateTimePickerAndroid.open({
+              value: endTime || new Date(),
+              mode: "datetime",
+              is24Hour: true,
+              onChange: (event, selectedDate) => {
+                  if (!event || event.type === "dismissed") return;
+                  if (!selectedDate) return;
+  
+                  if (startTime && selectedDate <= startTime) {
+                      Alert.alert("Invalid time", "End must be after start");
+                      return;
+                  }
+  
+                  setEndTime(selectedDate);
+              },
+          });
+      } else {
+          setShowEnd(true);
+      }
+    };
 
   useEffect(() => {
     if (!auth.currentUser) {
@@ -39,79 +83,34 @@ export default function AddTruck() {
       const trimmedName = name.trim();
       const trimmedFoodType = foodType.trim();
       const trimmedDescription = description.trim();
-      const trimmedMenuLink = menuLink.trim();
-      const trimmedLatitude = latitude.trim();
-      const trimmedLongitude = longitude.trim();
+      const trimmedAddress = address.trim();
+      
 
       console.log("RAW FORM VALUES:", {
         name,
         foodType,
         description,
-        menuLink,
-        latitude,
-        longitude,
+        
       });
 
       console.log("TRIMMED FORM VALUES:", {
         trimmedName,
         trimmedFoodType,
         trimmedDescription,
-        trimmedMenuLink,
-        trimmedLatitude,
-        trimmedLongitude,
+        
       });
 
-      if (!trimmedName || !trimmedLatitude || !trimmedLongitude) {
+      if (!trimmedName || !trimmedAddress ) {
         Alert.alert(
           "Missing fields",
-          "Truck name, latitude, and longitude are required"
-        );
-        return;
-      }
-
-      const parsedLat = Number(trimmedLatitude);
-      const parsedLng = Number(trimmedLongitude);
-
-      console.log("PARSED COORDINATES:", {
-        parsedLat,
-        parsedLng,
-      });
-
-      if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng)) {
-        Alert.alert(
-          "Invalid coordinates",
-          "Latitude and longitude must be valid numbers"
-        );
-        return;
-      }
-
-      if (parsedLat < -90 || parsedLat > 90) {
-        Alert.alert("Invalid latitude", "Latitude must be between -90 and 90");
-        return;
-      }
-
-      if (parsedLng < -180 || parsedLng > 180) {
-        Alert.alert(
-          "Invalid longitude",
-          "Longitude must be between -180 and 180"
-        );
-        return;
-      }
-
-      if (
-        trimmedMenuLink &&
-        !trimmedMenuLink.startsWith("http://") &&
-        !trimmedMenuLink.startsWith("https://")
-      ) {
-        Alert.alert(
-          "Invalid menu link",
-          "Menu link must start with http:// or https://"
+          "Truck name and address required"
         );
         return;
       }
 
       const truckRef = push(ref(db, "trucks"));
       console.log("NEW TRUCK REF KEY:", truckRef.key);
+
 
       const payload = {
         name: trimmedName,
@@ -185,34 +184,6 @@ export default function AddTruck() {
         value={description}
         onChangeText={setDescription}
         multiline
-      />
-
-      <Text style={styles.label}>Menu Link</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="https://example.com/menu"
-        value={menuLink}
-        onChangeText={setMenuLink}
-        autoCapitalize="none"
-        keyboardType="url"
-      />
-
-      <Text style={styles.label}>Latitude</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="35.0456"
-        value={latitude}
-        onChangeText={setLatitude}
-        keyboardType="numeric"
-      />
-
-      <Text style={styles.label}>Longitude</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="-85.3097"
-        value={longitude}
-        onChangeText={setLongitude}
-        keyboardType="numeric"
       />
 
       <Pressable style={styles.button} onPress={handleSubmit}>
