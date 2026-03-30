@@ -30,6 +30,7 @@ import {
 import { Modal, Linking } from "react-native";
 import useGeocoding from "../../hooks/useGeocoding";
 import useRoute from "../../hooks/useRoute";
+import { Platform } from "react-native";
 
 // export for the Home Page
 export default function HomePage() {
@@ -47,9 +48,10 @@ export default function HomePage() {
   const [selected, setSelected] = useState(false);
   // for routing
   const [selectedLocation, setSelectedLocation] = useState(null);
-  const [routeModalVisible, setRouteModalVisible] = useState(null);
+  const [routeModalVisible, setRouteModalVisible] = useState(false);
   const [input, setInput] = useState("");
   const [mode, setMode] = useState("driving");
+  const [destination, setDestination] = useState(null);
   const {
     route,
     coords,
@@ -79,17 +81,36 @@ export default function HomePage() {
       latitude: selectedLocation.latitude,
       longitude: selectedLocation.longitude,
     };
+    setDestination(end);
     setSelectedLocation(null);
     await getRoute(start, end, mode);
-
     setRouteModalVisible(false);
   };
   const openInMaps = () => {
-    if (!input || !selectedLocation) return;
+    if (!input || !destination) return;
+
     const origin = encodeURIComponent(input);
-    const destination = `${selectedLocation.latitude},${selectedLocation.longitude}`;
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${mode}`;
-    Linking.openURL(url);
+    const dest = `${destination.latitude},${destination.longitude}`;
+
+    if (Platform.OS === "ios") {
+      // Apple Maps
+      const appleUrl = `maps://?saddr=${origin}&daddr=${dest}&dirflg=${mode === "walking" ? "w" : "d"}`;
+      const webFallback = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=${mode === "walking" ? "w" : "d"}`;
+
+      Linking.canOpenURL(appleUrl).then((supported) => {
+        Linking.openURL(supported ? appleUrl : webFallback);
+      });
+
+    } else {
+      // Google Maps
+      const nativeUrl = `comgooglemaps://?saddr=${origin}&daddr=${dest}&directionsmode=${mode}`;
+      const webFallback = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${mode}`;
+
+      Linking.canOpenURL(nativeUrl).then((supported) => {
+        Linking.openURL(supported ? nativeUrl : webFallback);
+      });
+    }
+
   };
   const handleSearchSubmit = () => {
     if (!search.trim()) return;
@@ -331,7 +352,12 @@ export default function HomePage() {
           latitudeDelta: 0.2,
           longitudeDelta: 0.2,
         }}
-        onPress={() => setSelectedLocation(null)}
+        onPress={(e) => {
+          // Only clear if tapping the actual map, not a marker
+          if (e.nativeEvent.action !== 'marker-press') {
+            setSelectedLocation(null);
+          }
+        }}
       >
         {/* event markers from Firebase event data */}
         {filteredEvents
@@ -380,7 +406,7 @@ export default function HomePage() {
       {selectedLocation && !route && (
         <View style={{
           position: "absolute",
-          bottom: route ? 150 : 100,
+          bottom: insets.bottom + 20,
           left: 20,
           right: 20,
           backgroundColor: "white",
@@ -568,7 +594,7 @@ export default function HomePage() {
       {route && (
         <View style={{
           position: "absolute",
-          bottom: 30,
+          bottom: insets.bottom + 20,
           left: 20,
           right: 20,
           backgroundColor: "white",
@@ -580,7 +606,7 @@ export default function HomePage() {
           </Text>
           <Pressable onPress={openInMaps}>
             <Text style={{ color: "green", marginTop: 6 }}>
-              Open in Google Maps
+              Open in Maps
             </Text>
           </Pressable>
 
