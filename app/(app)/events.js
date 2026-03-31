@@ -1,46 +1,18 @@
 //tools
-import React from "react";
+import React, {useState, useEffect} from "react";
 import { AppText } from "../../components/AppText";
 import { View, StyleSheet } from "react-native";
-import { useState, useEffect } from "react";
-import { FlatList, Text } from "react-native";
-
-
+import {db, getDatabase, ref, query, orderByChild, startAt, onValue} from "../../lib/firebase";
 ////export of event screen
 export default function EventScreen() {
-    const [events, setEvents] = useState([]);
-
-    useEffect(() => {
-        setEvents(mockEvents);
-    }, []);
     
-    return (
+   const [events, setEvents] = useState([]);
+   const [loading, setLoading] = useState(true);
+   
+   return (
 //main container
-     <View style={{ flex: 1, padding: 16 }}>
-            <FlatList
-                data={events}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                    <View style={styles.card}>
-                        <Text style={styles.title}>{item.name}</Text>
-                        <Text>{item.description}</Text>
-                        <Text>{item.city}, {item.state}</Text>
-                    </View>
-                )}
-            />
+        <View className="justify-center flex-1 p-4">
+        <AppText center>Event Screen</AppText>
         </View>
     );
     }
-
-const styles = StyleSheet.create({
-    card: {
-        padding: 12,
-        marginBottom: 10,
-        backgroundColor: "#f2f2f2",
-        borderRadius: 8,
-    },
-    title: {
-        fontWeight: "bold",
-        fontSize: 16,
-    },
-});
