@@ -12,7 +12,7 @@ import {
   Pressable,
 } from "react-native";
 
-import MapView, { PROVIDER_GOOGLE, Marker } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 
 // firebase imports
@@ -27,6 +27,10 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { Modal, Linking } from "react-native";
+import useGeocoding from "../../hooks/useGeocoding";
+import useRoute from "../../hooks/useRoute";
+import { Platform } from "react-native";
 
 // export for the Home Page
 export default function HomePage() {
@@ -42,15 +46,80 @@ export default function HomePage() {
   // user search state
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(false);
+  // for routing
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [routeModalVisible, setRouteModalVisible] = useState(false);
+  const [input, setInput] = useState("");
+  const [mode, setMode] = useState("driving");
+  const [destination, setDestination] = useState(null);
+  const {
+    route,
+    coords,
+    getRoute,
+    clearRoute,
+    distanceText,
+    durationText,
+    loading
+  } = useRoute();
+  const { geocode, reverseGeocode } = useGeocoding();
+  const handleGetRoute = async () => {
+    if (!input.trim() || !selectedLocation) return;
 
-const handleSearchSubmit = () => {
-  if (!search.trim()) return;
+    const geo = await geocode(input);
 
-  const cleanSearch = search.toLowerCase().trim();
-  const allData = [...events, ...locations];
+    if (!geo) {
+      alert("Invalid address");
+      return;
+    }
 
-  const filtered = allData.filter((item) => {
-    const searchableText = `
+    const start = {
+      latitude: geo.lat,
+      longitude: geo.lng,
+    };
+
+    const end = {
+      latitude: selectedLocation.latitude,
+      longitude: selectedLocation.longitude,
+    };
+    setDestination(end);
+    setSelectedLocation(null);
+    await getRoute(start, end, mode);
+    setRouteModalVisible(false);
+  };
+  const openInMaps = () => {
+    if (!input || !destination) return;
+
+    const origin = encodeURIComponent(input);
+    const dest = `${destination.latitude},${destination.longitude}`;
+
+    if (Platform.OS === "ios") {
+      // Apple Maps
+      const appleUrl = `maps://?saddr=${origin}&daddr=${dest}&dirflg=${mode === "walking" ? "w" : "d"}`;
+      const webFallback = `https://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=${mode === "walking" ? "w" : "d"}`;
+
+      Linking.canOpenURL(appleUrl).then((supported) => {
+        Linking.openURL(supported ? appleUrl : webFallback);
+      });
+
+    } else {
+      // Google Maps
+      const nativeUrl = `comgooglemaps://?saddr=${origin}&daddr=${dest}&directionsmode=${mode}`;
+      const webFallback = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=${mode}`;
+
+      Linking.canOpenURL(nativeUrl).then((supported) => {
+        Linking.openURL(supported ? nativeUrl : webFallback);
+      });
+    }
+
+  };
+  const handleSearchSubmit = () => {
+    if (!search.trim()) return;
+
+    const cleanSearch = search.toLowerCase().trim();
+    const allData = [...events, ...locations];
+
+    const filtered = allData.filter((item) => {
+      const searchableText = `
       ${item?.name || ""}
       ${item?.type || ""}
       ${item?.city || ""}
@@ -58,68 +127,68 @@ const handleSearchSubmit = () => {
       ${item?.description || ""}
     `.toLowerCase();
 
-    return searchableText.includes(cleanSearch);
-  });
+      return searchableText.includes(cleanSearch);
+    });
 
-  setFilteredEvents(filtered);
+    setFilteredEvents(filtered);
 
-  // move map
-  if (filtered.length > 0) {
-    const first = filtered[0];
+    // move map
+    if (filtered.length > 0) {
+      const first = filtered[0];
 
-    if (
-      typeof first.latitude === "number" &&
-      typeof first.longitude === "number"
-    ) {
-      currentLocation.current?.animateToRegion({
-        latitude: first.latitude,
-        longitude: first.longitude,
-        latitudeDelta: 0.2,
-        longitudeDelta: 0.2,
-      });
+      if (
+        typeof first.latitude === "number" &&
+        typeof first.longitude === "number"
+      ) {
+        currentLocation.current?.animateToRegion({
+          latitude: first.latitude,
+          longitude: first.longitude,
+          latitudeDelta: 0.2,
+          longitudeDelta: 0.2,
+        });
+      }
     }
-  }
-};
+  };
 
 
-const getStatus = (event) => {
-  if (event.type === "food_truck") return "active";
+  const getStatus = (event) => {
+    if (event.type === "food_truck") return "active";
 
-  if (!event.startTime || !event.endTime) return "inactive";
+    if (!event.startTime || !event.endTime) return "inactive";
 
-  const now = new Date();
-  const startDate = new Date(event.startTime);
-  const endDate = new Date(event.endTime);
+    const now = new Date();
+    const startDate = new Date(event.startTime);
+    const endDate = new Date(event.endTime);
 
-  if (now > endDate) return "inactive";
-  if (now >= startDate) return "active";
-  return "future";
-};
+    if (now > endDate) return "inactive";
+    if (now >= startDate) return "active";
+    return "future";
+  };
 
-//opacity levels for different event statuses
-const getOpacity = (status) => {
-  if (status === "active") return 1;
-  if (status === "future") return 0.4;
-  return 0.15;
-};
+  //opacity levels for different event statuses
+  const getOpacity = (status) => {
+    if (status === "active") return 1;
+    if (status === "future") return 0.4;
+    return 0.15;
+  };
 
 
-// color coding for different marker types
-const TYPE_COLORS = {
-  event: "#3B82F6",       // blue
-  food_truck: "#F59E0B",  // orange
-};
+  // color coding for different marker types
+  const TYPE_COLORS = {
+    event: "#3B82F6",       // blue
+    food_truck: "#F59E0B",  // orange
+  };
 
-const moveToUserLocation = () => {
-  if (!latitude || !longitude || !currentLocation.current) return;
+  const moveToUserLocation = () => {
+    if (!latitude || !longitude || !currentLocation.current) return;
 
-  currentLocation.current.animateToRegion({
-    latitude,
-    longitude,
-    latitudeDelta: 0.2,
-    longitudeDelta: 0.2,
-  });
-};
+    currentLocation.current.animateToRegion({
+      latitude,
+      longitude,
+      latitudeDelta: 0.2,
+      longitudeDelta: 0.2,
+    });
+  };
 
 
   // current user location from custom hook
@@ -147,109 +216,109 @@ const moveToUserLocation = () => {
     console.log("CURRENT USER UID:", auth.currentUser?.uid);
   }, []);
 
-    // live read for events
-    useEffect(() => {
-      const eventsRef = ref(db, "events");
+  // live read for events
+  useEffect(() => {
+    const eventsRef = ref(db, "events");
 
-      const unsubscribe = onValue(
-        eventsRef,
-        (snapshot) => {
-          console.log("EVENT SNAPSHOT EXISTS:", snapshot.exists());
+    const unsubscribe = onValue(
+      eventsRef,
+      (snapshot) => {
+        console.log("EVENT SNAPSHOT EXISTS:", snapshot.exists());
 
-          const data = snapshot.val();
-          console.log("RAW EVENT DATA:", data);
+        const data = snapshot.val();
+        console.log("RAW EVENT DATA:", data);
 
-          if (!data) {
-            console.log("NO EVENTS FOUND");
-            setEvents([]);
-            setFilteredEvents([]);
-            return;
-          }
+        if (!data) {
+          console.log("NO EVENTS FOUND");
+          setEvents([]);
+          setFilteredEvents([]);
+          return;
+        }
 
-          const loadedEvents = Object.keys(data).map((id) => {
+        const loadedEvents = Object.keys(data).map((id) => {
+          const item = data[id];
+
+          return {
+            id,
+            name: item.title || "Untitled Event",
+            description: item.description || "",
+            latitude: item.location?.lat ?? null,
+            longitude: item.location?.lng ?? null,
+            city: item.location?.name || "",
+            state: "",
+            type: "event",
+            startTime: item.startTime || null,
+            endTime: item.endTime || null,
+            createdByUid: item.createdByUid || null,
+          };
+        });
+
+        console.log("LOADED EVENTS FROM DB:", loadedEvents);
+        setEvents(loadedEvents);
+        setFilteredEvents(loadedEvents);
+      },
+      (error) => {
+        console.log("EVENT READ ERROR:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    console.log("TRUCK EFFECT RAN");
+
+    const trucksRef = ref(db, "trucks");
+    console.log("TRUCK REF PATH:", "trucks");
+
+    const unsubscribe = onValue(
+      trucksRef,
+      (snapshot) => {
+        console.log("TRUCK SNAPSHOT EXISTS:", snapshot.exists());
+
+        const data = snapshot.val();
+        console.log("RAW TRUCK DATA:", data);
+
+        if (!data) {
+          console.log("NO TRUCKS FOUND");
+          setLocations([]);
+          return;
+        }
+
+        const loadedTrucks = Object.keys(data)
+          .map((id) => {
             const item = data[id];
+
+            const lat = item.location?.lat ?? item.latitude ?? item.lat;
+            const lng = item.location?.lng ?? item.longitude ?? item.lng;
 
             return {
               id,
-              name: item.title || "Untitled Event",
+              name: item.name || item.title || "Unnamed Truck",
               description: item.description || "",
-              latitude: item.location?.lat ?? null,
-              longitude: item.location?.lng ?? null,
-              city: item.location?.name || "",
-              state: "",
-              type: "event",
-              startTime: item.startTime || null,
-              endTime: item.endTime || null,
-              createdByUid: item.createdByUid || null,
+              latitude: typeof lat === "string" ? Number(lat) : lat,
+              longitude: typeof lng === "string" ? Number(lng) : lng,
+              type: "food_truck",
             };
-          });
+          })
+          .filter(
+            (item) =>
+              typeof item.latitude === "number" &&
+              !Number.isNaN(item.latitude) &&
+              typeof item.longitude === "number" &&
+              !Number.isNaN(item.longitude)
+          );
 
-          console.log("LOADED EVENTS FROM DB:", loadedEvents);
-          setEvents(loadedEvents);
-          setFilteredEvents(loadedEvents);
-        },
-        (error) => {
-          console.log("EVENT READ ERROR:", error);
-        }
-      );
+        console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
+        setLocations(loadedTrucks);
+      },
+      (error) => {
+        console.log("TRUCK READ ERROR:", error);
+      }
+    );
 
-      return () => unsubscribe();
-    }, []);
-
-    useEffect(() => {
-      console.log("TRUCK EFFECT RAN");
-
-      const trucksRef = ref(db, "trucks");
-      console.log("TRUCK REF PATH:", "trucks");
-
-      const unsubscribe = onValue(
-        trucksRef,
-        (snapshot) => {
-          console.log("TRUCK SNAPSHOT EXISTS:", snapshot.exists());
-
-          const data = snapshot.val();
-          console.log("RAW TRUCK DATA:", data);
-
-          if (!data) {
-            console.log("NO TRUCKS FOUND");
-            setLocations([]);
-            return;
-          }
-
-          const loadedTrucks = Object.keys(data)
-            .map((id) => {
-              const item = data[id];
-
-              const lat = item.location?.lat ?? item.latitude ?? item.lat;
-              const lng = item.location?.lng ?? item.longitude ?? item.lng;
-
-              return {
-                id,
-                name: item.name || item.title || "Unnamed Truck",
-                description: item.description || "",
-                latitude: typeof lat === "string" ? Number(lat) : lat,
-                longitude: typeof lng === "string" ? Number(lng) : lng,
-                type: "food_truck",
-              };
-            })
-            .filter(
-              (item) =>
-                typeof item.latitude === "number" &&
-                !Number.isNaN(item.latitude) &&
-                typeof item.longitude === "number" &&
-                !Number.isNaN(item.longitude)
-            );
-
-          console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
-          setLocations(loadedTrucks);
-        },
-        (error) => {
-          console.log("TRUCK READ ERROR:", error);
-        }
-      );
-
-      return () => unsubscribe();
-    }, []);
+    return () => unsubscribe();
+  }, []);
 
   // log events for debugging while developing
   useEffect(() => {
@@ -283,18 +352,24 @@ const moveToUserLocation = () => {
           latitudeDelta: 0.2,
           longitudeDelta: 0.2,
         }}
+        onPress={(e) => {
+          // Only clear if tapping the actual map, not a marker
+          if (e.nativeEvent.action !== 'marker-press') {
+            setSelectedLocation(null);
+          }
+        }}
       >
         {/* event markers from Firebase event data */}
-          {filteredEvents
-            .filter(
-              (event) =>
-                typeof event.latitude === "number" &&
-                typeof event.longitude === "number"
-            )
-            .map((event) => {
-              const status = getStatus(event);
+        {filteredEvents
+          .filter(
+            (event) =>
+              typeof event.latitude === "number" &&
+              typeof event.longitude === "number"
+          )
+          .map((event) => {
+            const status = getStatus(event);
 
-              return (
+            return (
               <Marker
                 key={event.id}
                 coordinate={{
@@ -304,11 +379,11 @@ const moveToUserLocation = () => {
                 title={event.name}
                 description={event.description}
                 pinColor={TYPE_COLORS[event.type] || "gray"}
-                style={{ opacity: getOpacity(status)}}
+                style={{ opacity: getOpacity(status) }}
+                onPress={() => setSelectedLocation(event)}
               />
             );
           })}
-
         {/* marker showing the user's current location */}
         {latitude && longitude && (
           <Marker
@@ -320,7 +395,133 @@ const moveToUserLocation = () => {
             pinColor="blue"
           />
         )}
+        {coords.length > 0 && (
+          <Polyline
+            coordinates={coords}
+            strokeWidth={4}
+            strokeColor={mode === "walking" ? "green" : "blue"}
+          />
+        )}
       </MapView>
+      {selectedLocation && !route && (
+        <View style={{
+          position: "absolute",
+          bottom: insets.bottom + 20,
+          left: 20,
+          right: 20,
+          backgroundColor: "white",
+          padding: 12,
+          borderRadius: 12,
+        }}>
+          <Text style={{ fontWeight: "bold" }}>
+            {selectedLocation.name}
+          </Text>
+
+          <Pressable onPress={() => setRouteModalVisible(true)}>
+            <Text style={{ color: "blue", marginTop: 6 }}>
+              Get Route
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={() => setSelectedLocation(null)}>
+            <Text style={{ color: "red", marginTop: 6 }}>
+              Close
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View style={styles.topWrap}></View>
+      <Modal visible={routeModalVisible} animationType="slide" transparent>
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            justifyContent: "center",
+          }}
+          onPress={() => setRouteModalVisible(false)}
+        >
+          <Pressable
+            onPress={() => { }}
+            style={{
+              margin: 20,
+              backgroundColor: "white",
+              padding: 20,
+              borderRadius: 12,
+            }}
+          >
+
+            <Text style={{ fontSize: 18, fontWeight: "bold" }}>
+              Route Options
+            </Text>
+
+
+            <TextInput
+              placeholder="Enter starting location"
+              value={input}
+              onChangeText={setInput}
+              style={{
+                borderWidth: 1,
+                padding: 10,
+                marginTop: 15,
+                borderRadius: 8,
+              }}
+            />
+
+
+            <Pressable
+              onPress={async () => {
+                if (!latitude || !longitude) return;
+
+                const result = await reverseGeocode(latitude, longitude);
+
+                if (result) {
+                  setInput(result.address);
+                }
+              }}
+              style={{ marginTop: 10 }}
+            >
+              <Text style={{ color: "blue" }}>
+                Use Current Location
+              </Text>
+            </Pressable>
+
+
+            <View style={{ flexDirection: "row", gap: 15, marginTop: 20 }}>
+              <Pressable onPress={() => setMode("driving")}>
+                <Text style={{ color: mode === "driving" ? "blue" : "black" }}>
+                  Drive
+                </Text>
+              </Pressable>
+
+              <Pressable onPress={() => setMode("walking")}>
+                <Text style={{ color: mode === "walking" ? "blue" : "black" }}>
+                  Walk
+                </Text>
+              </Pressable>
+            </View>
+
+
+            <Pressable
+              onPress={handleGetRoute}
+              style={{ marginTop: 30 }}
+            >
+              <Text style={{ color: "blue", fontSize: 16 }}>
+                Start Route
+              </Text>
+            </Pressable>
+
+
+            <Pressable
+              onPress={() => setRouteModalVisible(false)}
+              style={{ marginTop: 10 }}
+            >
+              <Text>Cancel</Text>
+            </Pressable>
+
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <View style={[styles.topWrap, { top: insets.top + 10 }]}>
         <View style={styles.searchRow}>
@@ -390,6 +591,32 @@ const moveToUserLocation = () => {
           </View>
         )}
       </View>
+      {route && (
+        <View style={{
+          position: "absolute",
+          bottom: insets.bottom + 20,
+          left: 20,
+          right: 20,
+          backgroundColor: "white",
+          padding: 12,
+          borderRadius: 12,
+        }}>
+          <Text>
+            {durationText} • {distanceText}
+          </Text>
+          <Pressable onPress={openInMaps}>
+            <Text style={{ color: "green", marginTop: 6 }}>
+              Open in Maps
+            </Text>
+          </Pressable>
+
+          <Pressable onPress={clearRoute}>
+            <Text style={{ color: "blue", marginTop: 6 }}>
+              Close Route
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {errorMessage ? (
         <Text style={styles.errorText}>{errorMessage}</Text>

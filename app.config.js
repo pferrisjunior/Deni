@@ -18,6 +18,7 @@ export default {
   	infoPlist: {
    	 NSLocationWhenInUseUsageDescription:
       	"Deni uses your location to show nearby food trucks and events.",
+    LSApplicationQueriesSchemes: ["comgooglemaps"],
  	},
 	config: {
 	    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
@@ -42,6 +43,7 @@ export default {
     plugins: [
       "expo-router",
       "expo-system-ui",
+      "@react-native-community/datetimepicker",
       [
         "@react-native-google-signin/google-signin",
         {
