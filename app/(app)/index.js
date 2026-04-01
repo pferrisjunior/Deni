@@ -246,7 +246,7 @@ export default function HomePage() {
 
         console.log("LOADED EVENTS FROM DB:", loadedEvents);
         setEvents(loadedEvents);
-        setFilteredEvents([...loadedEvents, ...locations]);
+
       },
       (error) => {
         console.log("EVENT READ ERROR:", error);
@@ -322,6 +322,10 @@ export default function HomePage() {
   useEffect(() => {
     console.log("FILTERED EVENTS:", filteredEvents);
   }, [filteredEvents]);
+//trying to fix those food truck markers not showing up on the map by combining the events and locations into one array for filtering and display
+  useEffect(() => {
+  setFilteredEvents([...events, ...locations]);
+}, [events, locations]);
 
   // store what user is typing into the search bar
   const handleSearch = (text) => {
