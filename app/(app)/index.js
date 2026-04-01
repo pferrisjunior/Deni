@@ -45,7 +45,6 @@ export default function HomePage() {
 
   // user search state
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(false);
   // for routing
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [routeModalVisible, setRouteModalVisible] = useState(false);
@@ -154,9 +153,9 @@ export default function HomePage() {
   const getStatus = (event) => {
     if (event.type === "food_truck") return "active";
 
-    if (!event.startTime || !event.endTime) return "inactive";
-
     const now = new Date();
+
+    if (!event.startTime || !event.endTime) return "active";
     const startDate = new Date(event.startTime);
     const endDate = new Date(event.endTime);
 
@@ -165,19 +164,11 @@ export default function HomePage() {
     return "future";
   };
 
-  //opacity levels for different event statuses
-  const getOpacity = (status) => {
-    if (status === "active") return 1;
-    if (status === "future") return 0.4;
-    return 0.15;
-  };
-
-
-  // color coding for different marker types
-  const TYPE_COLORS = {
-    event: "#3B82F6",       // blue
-    food_truck: "#F59E0B",  // orange
-  };
+  // updated color coding for different marker types
+  const getMarkerColor = (event) => {
+  if (event.type === "food_truck") return "#F59E0B"; // orange;
+  return "green";
+};
 
   const moveToUserLocation = () => {
     if (!latitude || !longitude || !currentLocation.current) return;
@@ -255,7 +246,7 @@ export default function HomePage() {
 
         console.log("LOADED EVENTS FROM DB:", loadedEvents);
         setEvents(loadedEvents);
-        setFilteredEvents(loadedEvents);
+
       },
       (error) => {
         console.log("EVENT READ ERROR:", error);
@@ -299,10 +290,12 @@ export default function HomePage() {
               latitude: typeof lat === "string" ? Number(lat) : lat,
               longitude: typeof lng === "string" ? Number(lng) : lng,
               type: "food_truck",
+              active: item.active ?? true,
             };
           })
           .filter(
             (item) =>
+              item.active &&
               typeof item.latitude === "number" &&
               !Number.isNaN(item.latitude) &&
               typeof item.longitude === "number" &&
@@ -329,6 +322,10 @@ export default function HomePage() {
   useEffect(() => {
     console.log("FILTERED EVENTS:", filteredEvents);
   }, [filteredEvents]);
+//trying to fix those food truck markers not showing up on the map by combining the events and locations into one array for filtering and display
+  useEffect(() => {
+  setFilteredEvents([...events, ...locations]);
+}, [events, locations]);
 
   // store what user is typing into the search bar
   const handleSearch = (text) => {
@@ -378,8 +375,7 @@ export default function HomePage() {
                 }}
                 title={event.name}
                 description={event.description}
-                pinColor={TYPE_COLORS[event.type] || "gray"}
-                style={{ opacity: getOpacity(status) }}
+                pinColor={getMarkerColor(event)}
                 onPress={() => setSelectedLocation(event)}
               />
             );
@@ -543,8 +539,6 @@ export default function HomePage() {
               placeholder="Looking for something?"
               placeholderTextColor="#666"
               style={styles.searchInput}
-              onFocus={() => setSelected(true)}
-              onBlur={() => setSelected(false)}
               returnKeyType="search"
               onSubmitEditing={handleSearchSubmit}
             />
@@ -565,31 +559,7 @@ export default function HomePage() {
           </Pressable>
         </View>
 
-        {selected && (
-          <View style={styles.dropdown}>
-            <Text style={styles.sectionTitle}>Categories:</Text>
 
-            <View style={styles.categoriesRow}>
-              <Ionicons name="restaurant-outline" size={22} color="#555" />
-              <Ionicons name="wine-outline" size={22} color="#555" />
-              <Ionicons name="color-palette-outline" size={22} color="#555" />
-            </View>
-
-            <Text style={styles.sectionTitle}>Popular Searches</Text>
-
-            <Pressable style={styles.resultItem}>
-              <Text>Food trucks near me</Text>
-            </Pressable>
-
-            <Pressable style={styles.resultItem}>
-              <Text>Live music tonight</Text>
-            </Pressable>
-
-            <Pressable style={styles.resultItem}>
-              <Text>Community events</Text>
-            </Pressable>
-          </View>
-        )}
       </View>
       {route && (
         <View style={{
