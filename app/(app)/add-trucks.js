@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -15,6 +14,7 @@ import { Platform } from "react-native";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import useGeocoding from "../../hooks/useGeocoding";
+import useUserLocation from "../../hooks/userLocation";
 
 export default function AddTruck() {
   const [name, setName] = useState("");
@@ -24,9 +24,29 @@ export default function AddTruck() {
   const [endTime, setEndTime] = useState(null);
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
-  const [active, setActive] = useState(false)
+  const [active, setActive] = useState(false);
   const [address, setAddress] = useState("");
   const { geocode, loading, error } = useGeocoding();
+  const { latitude, longitude, errorMessage } = useUserLocation();
+
+  const getDistanceFromUser = (lat, lng) => {
+    if (!latitude || !longitude) return null;
+    // Earths radius in miles
+    const R = 3958.8;
+    // convert degrees to radians
+    const dLat = ((lat - latitude) * Math.PI) / 180;
+    const dLng = ((lng - longitude) * Math.PI) / 180;
+    //Harvesine formula used to calculate distance between two lat/lng points
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((latitude * Math.PI) / 180) *
+        Math.cos((lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const handleStartPress = () => {
     if (Platform.OS === "android") {
       DateTimePickerAndroid.open({
@@ -71,10 +91,17 @@ export default function AddTruck() {
       const uid = auth.currentUser?.uid;
       if (!uid) throw new Error("User not authenticated");
 
-      if (!name || !foodType || !description || !address || !startTime || !endTime) {
+      if (
+        !name ||
+        !foodType ||
+        !description ||
+        !address ||
+        !startTime ||
+        !endTime
+      ) {
         Alert.alert(
           "Missing fields",
-          "All fields are required (name, food type, description, address, start, end)."
+          "All fields are required (name, food type, description, address, start, end).",
         );
         return;
       }
@@ -94,6 +121,19 @@ export default function AddTruck() {
 
       if (!lat || !lng) {
         Alert.alert("Error", "Invalid location returned");
+        return;
+      }
+
+      const distance = getDistanceFromUser(lat, lng);
+      if (distance === null) {
+        Alert.alert(
+          "Error",
+          "Users location not available. Make sure to allow location permissions and try again.",
+        );
+        return;
+      }
+      if (distance > 1) {
+        Alert.alert("Too far", "Truck must be within 1 mile of your location.");
         return;
       }
 
@@ -129,109 +169,105 @@ export default function AddTruck() {
       setStartTime(null);
       setEndTime(null);
       setActive(false);
-
     } catch (err) {
       console.log("ADD TRUCK ERROR:", err);
       Alert.alert(
         "Error",
-        err?.message || "Something went wrong while creating the truck"
+        err?.message || "Something went wrong while creating the truck",
       );
     }
   };
 
-
-return (
-  <ScrollView
-    contentContainerStyle={styles.container}
-    keyboardShouldPersistTaps="handled"
-    showsVerticalScrollIndicator={false}
-  >
-    <Text style={styles.header}>Add Truck</Text>
-    <Text style={styles.subheader}>Create a new truck for Deni</Text>
-
-    <Text style={styles.label}>Truck Name</Text>
-    <TextInput
-      style={styles.input}
-      placeholder="Burger Bus"
-      value={name}
-      onChangeText={setName}
-    />
-
-    <Text style={styles.label}>Food Type</Text>
-    <TextInput
-      style={styles.input}
-      placeholder="Tacos, BBQ, Burgers..."
-      value={foodType}
-      onChangeText={setFoodType}
-    />
-
-    <Text style={styles.label}>Description</Text>
-    <TextInput
-      style={[styles.input, styles.multilineInput]}
-      placeholder="Describe the truck or what it serves"
-      value={description}
-      onChangeText={setDescription}
-      multiline
-    />
-    <Text style={styles.label}>Active</Text>
-    <Pressable
-      style={styles.input}
-      onPress={() => setActive(prev => !prev)}
+  return (
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
     >
-      <Text>{active ? "Yes" : "No"}</Text>
-    </Pressable>
-    <Text style={styles.label}>Address</Text>
-    <TextInput
-      style={styles.input}
-      placeholder="123 Main St"
-      value={address}
-      onChangeText={setAddress}
-    />
-    <Text style={styles.label}>Start Time</Text>
-    <Pressable style={styles.input} onPress={handleStartPress}>
-      <Text>
-        {startTime ? startTime.toLocaleString() : "Select start time"}
-      </Text>
-    </Pressable>
+      <Text style={styles.header}>Add Truck</Text>
+      <Text style={styles.subheader}>Create a new truck for Deni</Text>
 
-    <Text style={styles.label}>End Time</Text>
-    <Pressable style={styles.input} onPress={handleEndPress}>
-      <Text>
-        {endTime ? endTime.toLocaleString() : "Select end time"}
-      </Text>
-    </Pressable>
-    {Platform.OS === "ios" && showStart && (
-      <DateTimePicker
-        value={startTime || new Date()}
-        mode="datetime"
-        display="spinner"
-        onChange={(event, selectedDate) => {
-          if (selectedDate) setStartTime(selectedDate);
-        }}
+      <Text style={styles.label}>Truck Name</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Burger Bus"
+        value={name}
+        onChangeText={setName}
       />
-    )}
-    {Platform.OS === "ios" && showEnd && (
-      <DateTimePicker
-        value={endTime || new Date()}
-        mode="datetime"
-        display="spinner"
-        onChange={(event, selectedDate) => {
-          if (!selectedDate) return;
 
-          if (startTime && selectedDate <= startTime) {
-            Alert.alert("Invalid time", "End must be after start");
-            return;
-          }
-
-          setEndTime(selectedDate);
-        }}
+      <Text style={styles.label}>Food Type</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Tacos, BBQ, Burgers..."
+        value={foodType}
+        onChangeText={setFoodType}
       />
-    )}
-    <Pressable style={styles.button} onPress={handleSubmit}>
-      <Text style={styles.buttonText}>Add a food Truck.</Text>
-    </Pressable>
-  </ScrollView>
-);
+
+      <Text style={styles.label}>Description</Text>
+      <TextInput
+        style={[styles.input, styles.multilineInput]}
+        placeholder="Describe the truck or what it serves"
+        value={description}
+        onChangeText={setDescription}
+        multiline
+      />
+      <Text style={styles.label}>Active</Text>
+      <Pressable
+        style={styles.input}
+        onPress={() => setActive((prev) => !prev)}
+      >
+        <Text>{active ? "Yes" : "No"}</Text>
+      </Pressable>
+      <Text style={styles.label}>Address</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="123 Main St, Chattanooga, TN"
+        value={address}
+        onChangeText={setAddress}
+      />
+      <Text style={styles.label}>Start Time</Text>
+      <Pressable style={styles.input} onPress={handleStartPress}>
+        <Text>
+          {startTime ? startTime.toLocaleString() : "Select start time"}
+        </Text>
+      </Pressable>
+
+      <Text style={styles.label}>End Time</Text>
+      <Pressable style={styles.input} onPress={handleEndPress}>
+        <Text>{endTime ? endTime.toLocaleString() : "Select end time"}</Text>
+      </Pressable>
+      {Platform.OS === "ios" && showStart && (
+        <DateTimePicker
+          value={startTime || new Date()}
+          mode="datetime"
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            if (selectedDate) setStartTime(selectedDate);
+          }}
+        />
+      )}
+      {Platform.OS === "ios" && showEnd && (
+        <DateTimePicker
+          value={endTime || new Date()}
+          mode="datetime"
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            if (!selectedDate) return;
+
+            if (startTime && selectedDate <= startTime) {
+              Alert.alert("Invalid time", "End must be after start");
+              return;
+            }
+
+            setEndTime(selectedDate);
+          }}
+        />
+      )}
+      <Pressable style={styles.button} onPress={handleSubmit}>
+        <Text style={styles.buttonText}>Add a food Truck.</Text>
+      </Pressable>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
