@@ -521,9 +521,7 @@ export default function HomePage() {
 
       <View style={[styles.topWrap, { top: insets.top + 10 }]}>
         <View style={styles.searchRow}>
-          <Pressable style={styles.profileButton}>
-            <Ionicons name="person-circle-outline" size={24} color="#111" />
-          </Pressable>
+          
 
           <View style={styles.searchBar}>
             <Ionicons
@@ -544,12 +542,7 @@ export default function HomePage() {
             />
           </View>
 
-          <Pressable
-            style={styles.addButton}
-            onPress={() => router.push("/(app)/add-events")}
-          >
-            <Ionicons name="add" size={26} color="#555" />
-          </Pressable>
+          
 
           <Pressable
             style={styles.locationButton}
@@ -624,24 +617,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  profileButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  addButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "rgba(255,255,255,0.95)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
   locationButton: {
     width: 46,
     height: 46,
@@ -681,6 +656,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: "600",
+  
     marginBottom: 6,
   },
 

@@ -34,6 +34,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 20,
   },
+  header: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginTop: 40,
+    marginBottom: 10,
+    textAlign: "center",
+  },
   logoutButton: {
     backgroundColor: "#111",
     paddingVertical: 12,
