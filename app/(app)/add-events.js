@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
         marginBottom: 20
     },
     button: {
-        backgroundColor: "#D6C2A1",
+        backgroundColor: "#000dff",
         padding: 15,
         borderRadius: 12,
         alignItems: "center",
@@ -271,7 +271,8 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         fontSize: 16,
-        fontWeight: "600"
+        fontWeight: "600",
+        color: "#f3f3f3"
     },
     dropdown: {
         backgroundColor: "#fff",
