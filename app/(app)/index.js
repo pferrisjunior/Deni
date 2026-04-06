@@ -167,7 +167,7 @@ export default function HomePage() {
   // updated color coding for different marker types
   const getMarkerColor = (event) => {
   if (event.type === "food_truck") return "#F59E0B"; // orange;
-  return "green";
+  return "#808080";
 };
 
   const moveToUserLocation = () => {
