@@ -3,8 +3,10 @@ import { AppText } from "../../components/AppText";
 import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
+import { useUser } from "../../context/userContext";
 //export screeen
 export default function ProfileScreen() {
+    const { user } = useUser();
     const handleLogout = async () => {
     try {
       await signOut(auth); 
@@ -15,6 +17,9 @@ export default function ProfileScreen() {
     return (
     <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
+      <Text style={styles.name}>
+        Hello, {user?.displayName || "Loading..."}
+      </Text>
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
