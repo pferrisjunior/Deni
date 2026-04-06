@@ -4,7 +4,9 @@ import { View, StyleSheet, TouchableOpacity, Text } from "react-native";
 import { signOut } from "firebase/auth";
 import { auth } from "../../lib/firebase";
 import { ref } from "firebase/database";
+import { useId } from "react";
 //export screeen
+///needs to be swapped for display name but current it appears blank.
 export default function ProfileScreen() {
     const handleLogout = async () => {
     try {
@@ -16,7 +18,8 @@ export default function ProfileScreen() {
     return (
     <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
-      <Text style={styles.header}>Hi, </Text>
+      
+      <Text style={styles.header}>Hi, {auth.currentUser.email}</Text>
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
