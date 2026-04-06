@@ -264,7 +264,7 @@ export default function AddTruck() {
         />
       )}
       <Pressable style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Add a food Truck.</Text>
+        <Text style={styles.buttonText}>Add Food Truck.</Text>
       </Pressable>
     </ScrollView>
   );
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   button: {
-    backgroundColor: "#D6C2A1",
+    backgroundColor: "#000dff",
     padding: 15,
     borderRadius: 12,
     alignItems: "center",
@@ -314,5 +314,6 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#E5E5E5"
   },
 });

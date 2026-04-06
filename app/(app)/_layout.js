@@ -112,17 +112,17 @@ export default function TabLayout() {
             <AntDesign
               name="truck"
               size={size}
-              color={user ? color : "#9CA3AF"}
+              color={user ? color : "#111"}
             />
           ),
           tabBarLabelStyle: {
-            color: user ? undefined : "#9CA3AF",
+            color: user ? undefined : "#111",
           },
           tabBarButton: (props) => (
             <Pressable
               {...props}
               onPress={() => requireAuth("/add-trucks")}
-              style={[props.style, !user && { opacity: 0.65 }]}
+              style={[props.style, !user && { opacity: 0.99 }]}
             />
           ),
         }}
