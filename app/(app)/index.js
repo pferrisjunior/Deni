@@ -4,13 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 // import router hook for screen navigation
 import { useRouter } from "expo-router";
 
-import {
-  View,
-  StyleSheet,
-  TextInput,
-  Text,
-  Pressable,
-} from "react-native";
+import { View, StyleSheet, TextInput, Text, Pressable } from "react-native";
 
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,7 +52,7 @@ export default function HomePage() {
     clearRoute,
     distanceText,
     durationText,
-    loading
+    loading,
   } = useRoute();
   const { geocode, reverseGeocode } = useGeocoding();
   const handleGetRoute = async () => {
@@ -99,7 +93,6 @@ export default function HomePage() {
       Linking.canOpenURL(appleUrl).then((supported) => {
         Linking.openURL(supported ? appleUrl : webFallback);
       });
-
     } else {
       // Google Maps
       const nativeUrl = `comgooglemaps://?saddr=${origin}&daddr=${dest}&directionsmode=${mode}`;
@@ -109,7 +102,6 @@ export default function HomePage() {
         Linking.openURL(supported ? nativeUrl : webFallback);
       });
     }
-
   };
   const handleSearchSubmit = () => {
     if (!search.trim()) return;
@@ -149,26 +141,50 @@ export default function HomePage() {
     }
   };
 
-
   const getStatus = (event) => {
-    if (event.type === "food_truck") return "active";
+    if (event.type === "food_truck") {
+      return event.active ? "active" : "inactive";
+    }
 
-    const now = new Date();
+    const now = Date.now();
 
-    if (!event.startTime || !event.endTime) return "active";
-    const startDate = new Date(event.startTime);
-    const endDate = new Date(event.endTime);
+    if (!event.startTime || !event.endTime) return "inactive";
 
-    if (now > endDate) return "inactive";
-    if (now >= startDate) return "active";
-    return "future";
+    if (now < event.startTime || now > event.endTime) {
+      return "inactive";
+    }
+
+    const timeLeft = event.endTime - now;
+
+    // ending within 2 hours
+    if (timeLeft <= 2 * 60 * 60 * 1000) {
+      return "endingSoon";
+    }
+
+    return "active";
   };
 
   // updated color coding for different marker types
   const getMarkerColor = (event) => {
-  if (event.type === "food_truck") return "#F59E0B"; // orange;
-  return "green";
-};
+    const status = getStatus(event);
+
+    // FOOD TRUCKS
+    if (event.type === "food_truck") {
+      return status === "active" ? "#22C55E" : "#9CA3AF"; // green or gray
+    }
+
+    // EVENTS
+    switch (status) {
+      case "inactive":
+        return "#9CA3AF"; // gray
+      case "endingSoon":
+        return "#FACC15"; // yellow
+      case "active":
+        return "#3B82F6"; // blue
+      default:
+        return "#9CA3AF";
+    }
+  };
 
   const moveToUserLocation = () => {
     if (!latitude || !longitude || !currentLocation.current) return;
@@ -180,7 +196,6 @@ export default function HomePage() {
       longitudeDelta: 0.2,
     });
   };
-
 
   // current user location from custom hook
   const { latitude, longitude, errorMessage } = useUserLocation();
@@ -246,11 +261,10 @@ export default function HomePage() {
 
         console.log("LOADED EVENTS FROM DB:", loadedEvents);
         setEvents(loadedEvents);
-
       },
       (error) => {
         console.log("EVENT READ ERROR:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -299,7 +313,7 @@ export default function HomePage() {
               typeof item.latitude === "number" &&
               !Number.isNaN(item.latitude) &&
               typeof item.longitude === "number" &&
-              !Number.isNaN(item.longitude)
+              !Number.isNaN(item.longitude),
           );
 
         console.log("LOADED TRUCKS FROM DB:", loadedTrucks);
@@ -307,7 +321,7 @@ export default function HomePage() {
       },
       (error) => {
         console.log("TRUCK READ ERROR:", error);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -322,10 +336,10 @@ export default function HomePage() {
   useEffect(() => {
     console.log("FILTERED EVENTS:", filteredEvents);
   }, [filteredEvents]);
-//trying to fix those food truck markers not showing up on the map by combining the events and locations into one array for filtering and display
+  //trying to fix those food truck markers not showing up on the map by combining the events and locations into one array for filtering and display
   useEffect(() => {
-  setFilteredEvents([...events, ...locations]);
-}, [events, locations]);
+    setFilteredEvents([...events, ...locations]);
+  }, [events, locations]);
 
   // store what user is typing into the search bar
   const handleSearch = (text) => {
@@ -334,8 +348,6 @@ export default function HomePage() {
 
   // combine data fields of events and food trucks before filtering
   const combinedData = [...events, ...locations];
-
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -351,7 +363,7 @@ export default function HomePage() {
         }}
         onPress={(e) => {
           // Only clear if tapping the actual map, not a marker
-          if (e.nativeEvent.action !== 'marker-press') {
+          if (e.nativeEvent.action !== "marker-press") {
             setSelectedLocation(null);
           }
         }}
@@ -361,7 +373,7 @@ export default function HomePage() {
           .filter(
             (event) =>
               typeof event.latitude === "number" &&
-              typeof event.longitude === "number"
+              typeof event.longitude === "number",
           )
           .map((event) => {
             const status = getStatus(event);
@@ -400,29 +412,25 @@ export default function HomePage() {
         )}
       </MapView>
       {selectedLocation && !route && (
-        <View style={{
-          position: "absolute",
-          bottom: insets.bottom + 20,
-          left: 20,
-          right: 20,
-          backgroundColor: "white",
-          padding: 12,
-          borderRadius: 12,
-        }}>
-          <Text style={{ fontWeight: "bold" }}>
-            {selectedLocation.name}
-          </Text>
+        <View
+          style={{
+            position: "absolute",
+            bottom: insets.bottom + 20,
+            left: 20,
+            right: 20,
+            backgroundColor: "white",
+            padding: 12,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ fontWeight: "bold" }}>{selectedLocation.name}</Text>
 
           <Pressable onPress={() => setRouteModalVisible(true)}>
-            <Text style={{ color: "blue", marginTop: 6 }}>
-              Get Route
-            </Text>
+            <Text style={{ color: "blue", marginTop: 6 }}>Get Route</Text>
           </Pressable>
 
           <Pressable onPress={() => setSelectedLocation(null)}>
-            <Text style={{ color: "red", marginTop: 6 }}>
-              Close
-            </Text>
+            <Text style={{ color: "red", marginTop: 6 }}>Close</Text>
           </Pressable>
         </View>
       )}
@@ -438,7 +446,7 @@ export default function HomePage() {
           onPress={() => setRouteModalVisible(false)}
         >
           <Pressable
-            onPress={() => { }}
+            onPress={() => {}}
             style={{
               margin: 20,
               backgroundColor: "white",
@@ -446,11 +454,9 @@ export default function HomePage() {
               borderRadius: 12,
             }}
           >
-
             <Text style={{ fontSize: 18, fontWeight: "bold" }}>
               Route Options
             </Text>
-
 
             <TextInput
               placeholder="Enter starting location"
@@ -464,7 +470,6 @@ export default function HomePage() {
               }}
             />
 
-
             <Pressable
               onPress={async () => {
                 if (!latitude || !longitude) return;
@@ -477,11 +482,8 @@ export default function HomePage() {
               }}
               style={{ marginTop: 10 }}
             >
-              <Text style={{ color: "blue" }}>
-                Use Current Location
-              </Text>
+              <Text style={{ color: "blue" }}>Use Current Location</Text>
             </Pressable>
-
 
             <View style={{ flexDirection: "row", gap: 15, marginTop: 20 }}>
               <Pressable onPress={() => setMode("driving")}>
@@ -497,16 +499,9 @@ export default function HomePage() {
               </Pressable>
             </View>
 
-
-            <Pressable
-              onPress={handleGetRoute}
-              style={{ marginTop: 30 }}
-            >
-              <Text style={{ color: "blue", fontSize: 16 }}>
-                Start Route
-              </Text>
+            <Pressable onPress={handleGetRoute} style={{ marginTop: 30 }}>
+              <Text style={{ color: "blue", fontSize: 16 }}>Start Route</Text>
             </Pressable>
-
 
             <Pressable
               onPress={() => setRouteModalVisible(false)}
@@ -514,7 +509,6 @@ export default function HomePage() {
             >
               <Text>Cancel</Text>
             </Pressable>
-
           </Pressable>
         </Pressable>
       </Modal>
@@ -551,39 +545,32 @@ export default function HomePage() {
             <Ionicons name="add" size={26} color="#555" />
           </Pressable>
 
-          <Pressable
-            style={styles.locationButton}
-            onPress={moveToUserLocation}
-          >
+          <Pressable style={styles.locationButton} onPress={moveToUserLocation}>
             <Ionicons name="locate-outline" size={22} color="#111" />
           </Pressable>
         </View>
-
-
       </View>
       {route && (
-        <View style={{
-          position: "absolute",
-          bottom: insets.bottom + 20,
-          left: 20,
-          right: 20,
-          backgroundColor: "white",
-          padding: 12,
-          borderRadius: 12,
-        }}>
+        <View
+          style={{
+            position: "absolute",
+            bottom: insets.bottom + 20,
+            left: 20,
+            right: 20,
+            backgroundColor: "white",
+            padding: 12,
+            borderRadius: 12,
+          }}
+        >
           <Text>
             {durationText} • {distanceText}
           </Text>
           <Pressable onPress={openInMaps}>
-            <Text style={{ color: "green", marginTop: 6 }}>
-              Open in Maps
-            </Text>
+            <Text style={{ color: "green", marginTop: 6 }}>Open in Maps</Text>
           </Pressable>
 
           <Pressable onPress={clearRoute}>
-            <Text style={{ color: "blue", marginTop: 6 }}>
-              Close Route
-            </Text>
+            <Text style={{ color: "blue", marginTop: 6 }}>Close Route</Text>
           </Pressable>
         </View>
       )}

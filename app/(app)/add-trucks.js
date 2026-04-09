@@ -28,6 +28,16 @@ export default function AddTruck() {
   const [address, setAddress] = useState("");
   const { geocode, loading, error } = useGeocoding();
   const { latitude, longitude, errorMessage } = useUserLocation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formValid =
+    name.trim() !== "" &&
+    foodType.trim() !== "" &&
+    description.trim() !== "" &&
+    address.trim() !== "" &&
+    startTime !== null &&
+    endTime !== null &&
+    endTime > startTime;
 
   const getDistanceFromUser = (lat, lng) => {
     if (!latitude || !longitude) return null;
@@ -88,6 +98,7 @@ export default function AddTruck() {
 
   const handleSubmit = async () => {
     try {
+      if (isSubmitting) return;
       const uid = auth.currentUser?.uid;
       if (!uid) throw new Error("User not authenticated");
 
@@ -110,7 +121,7 @@ export default function AddTruck() {
         Alert.alert("Invalid time", "End time must be after start time");
         return;
       }
-
+      setIsSubmitting(true);
       const result = await geocode(address);
       if (!result) {
         Alert.alert("Error", "Could not find that address");
@@ -175,6 +186,8 @@ export default function AddTruck() {
         "Error",
         err?.message || "Something went wrong while creating the truck",
       );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -263,8 +276,21 @@ export default function AddTruck() {
           }}
         />
       )}
-      <Pressable style={styles.button} onPress={handleSubmit}>
-        <Text style={styles.buttonText}>Add a food Truck.</Text>
+      <Pressable
+        style={[
+          styles.button,
+          !formValid
+            ? styles.buttonDisabled
+            : isSubmitting
+              ? styles.buttonSubmitting
+              : styles.buttonActive,
+        ]}
+        onPress={handleSubmit}
+        disabled={!formValid || isSubmitting}
+      >
+        <Text style={[styles.buttonText, formValid && styles.buttonTextActive]}>
+          {isSubmitting ? "Adding..." : "Add a food Truck."}
+        </Text>
       </Pressable>
     </ScrollView>
   );
@@ -314,5 +340,17 @@ const styles = StyleSheet.create({
   buttonText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonActive: {
+    backgroundColor: "#3B82F6",
+  },
+  buttonSubmitting: {
+    backgroundColor: "#1D4ED8",
+  },
+  buttonTextActive: {
+    color: "#FFFFFF",
   },
 });

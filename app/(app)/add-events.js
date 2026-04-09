@@ -1,7 +1,14 @@
 // app/add-event.js
 
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { ref, push, set } from "firebase/database";
 import { auth, db } from "../../lib/firebase"; // **** adjust path if needed
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -11,279 +18,320 @@ import useGeocoding from "../../hooks/useGeocoding";
 import { ScrollView } from "react-native";
 
 export default function AddEvent() {
-    const [title, setTitle] = useState("");
-    const [description, setDescription] = useState("");
-    const [startTime, setStartTime] = useState(null);
-    const [endTime, setEndTime] = useState(null);
-    const [showStart, setShowStart] = useState(false);
-    const [showEnd, setShowEnd] = useState(false);
-    const [recurring, setRecurring] = useState({
-        type: "none"
-    });
-    const [address, setAddress] = useState("");
-    const { geocode, loading, error } = useGeocoding();
-    const [showDropdown, setShowDropdown] = useState(false);
-    const handleStartPress = () => {
-        if (Platform.OS === "android") {
-            DateTimePickerAndroid.open({
-                value: startTime || new Date(),
-                mode: "datetime",
-                is24Hour: true,
-                onChange: (event, selectedDate) => {
-                    if (!event || event.type === "dismissed") return;
-                    if (selectedDate) setStartTime(selectedDate);
-                },
-            });
-        } else {
-            setShowStart(true);
-        }
-    };
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [startTime, setStartTime] = useState(null);
+  const [endTime, setEndTime] = useState(null);
+  const [showStart, setShowStart] = useState(false);
+  const [showEnd, setShowEnd] = useState(false);
+  const [recurring, setRecurring] = useState({
+    type: "none",
+  });
+  const [address, setAddress] = useState("");
+  const { geocode, loading, error } = useGeocoding();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleEndPress = () => {
-        if (Platform.OS === "android") {
-            DateTimePickerAndroid.open({
-                value: endTime || new Date(),
-                mode: "datetime",
-                is24Hour: true,
-                onChange: (event, selectedDate) => {
-                    if (!event || event.type === "dismissed") return;
-                    if (!selectedDate) return;
+  const formValid =
+    title.trim() !== "" &&
+    address.trim() !== "" &&
+    startTime !== null &&
+    endTime !== null &&
+    endTime > startTime;
 
-                    if (startTime && selectedDate <= startTime) {
-                        Alert.alert("Invalid time", "End must be after start");
-                        return;
-                    }
+  const handleStartPress = () => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: startTime || new Date(),
+        mode: "datetime",
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (!event || event.type === "dismissed") return;
+          if (selectedDate) setStartTime(selectedDate);
+        },
+      });
+    } else {
+      setShowStart(true);
+    }
+  };
 
-                    setEndTime(selectedDate);
-                },
-            });
-        } else {
-            setShowEnd(true);
-        }
-    };
-    const handleSubmit = async () => {
-        try {
-            const uid = auth.currentUser?.uid;
-            if (!uid) throw new Error("User not authenticated");
-            //will modify when I add geocoding.
-            if (!title || !address || !startTime || !endTime) {
-                Alert.alert("Missing fields", "Title, address, start, and end time required.");
-                return;
-            }
-            if (endTime <= startTime) {
-                Alert.alert("Invalid time", "End time must be after start time");
-                return;
-            }
-            const result = await geocode(address);
-            console.log(result)
-            if (!result) {
-                Alert.alert("Error", "Could not find that address");
-                return;
-            }
+  const handleEndPress = () => {
+    if (Platform.OS === "android") {
+      DateTimePickerAndroid.open({
+        value: endTime || new Date(),
+        mode: "datetime",
+        is24Hour: true,
+        onChange: (event, selectedDate) => {
+          if (!event || event.type === "dismissed") return;
+          if (!selectedDate) return;
 
-            const { lat, lng } = result;
-            console.log("auth.currentUser:", auth?.currentUser);
-            console.log("db value:", db);
-            console.log("db type:", typeof db);
-            const eventRef = push(ref(db, "events"));
-            await set(eventRef, {
-                title,
-                description,
-                startTime: startTime.getTime(),
-                endTime: endTime.getTime(),
-                ownerUid: uid,
-                createdByUid: uid,
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-                location: {
-                    lat,
-                    lng
-                },
-                address,
-                recurring,
-            });
+          if (startTime && selectedDate <= startTime) {
+            Alert.alert("Invalid time", "End must be after start");
+            return;
+          }
 
-            Alert.alert("Success", "Event created!");
+          setEndTime(selectedDate);
+        },
+      });
+    } else {
+      setShowEnd(true);
+    }
+  };
+  const handleSubmit = async () => {
+    try {
+      // Prevent multiple submissions
+      if (isSubmitting) return;
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("User not authenticated");
+      //will modify when I add geocoding.
+      if (!title || !address || !startTime || !endTime) {
+        Alert.alert(
+          "Missing fields",
+          "Title, address, start, and end time required.",
+        );
+        return;
+      }
+      if (endTime <= startTime) {
+        Alert.alert("Invalid time", "End time must be after start time");
+        return;
+      }
+      setIsSubmitting(true);
+      const result = await geocode(address);
+      console.log(result);
+      if (!result) {
+        Alert.alert("Error", "Could not find that address");
+        return;
+      }
 
-            setTitle("");
-            setDescription("");
-            setAddress("");
-            setStartTime(null)
-            setEndTime(null)
+      const { lat, lng } = result;
+      console.log("auth.currentUser:", auth?.currentUser);
+      console.log("db value:", db);
+      console.log("db type:", typeof db);
+      const eventRef = push(ref(db, "events"));
+      await set(eventRef, {
+        title,
+        description,
+        startTime: startTime.getTime(),
+        endTime: endTime.getTime(),
+        ownerUid: uid,
+        createdByUid: uid,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        location: {
+          lat,
+          lng,
+        },
+        address,
+        recurring,
+      });
 
-        } catch (err) {
-            Alert.alert("Error", err?.message || "Something went wrong while creating the event");
-        }
-    };
+      Alert.alert("Success", "Event created!");
 
-    return (
-        <ScrollView
-            contentContainerStyle={styles.container}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-        >
-            <Text style={styles.header}>Add Event</Text>
-            <Text style={styles.subheader}>Create a new event for Deni</Text>
+      setTitle("");
+      setDescription("");
+      setAddress("");
+      setStartTime(null);
+      setEndTime(null);
+    } catch (err) {
+      Alert.alert(
+        "Error",
+        err?.message || "Something went wrong while creating the event",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-            <Text style={styles.label}>Event Title</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="Night Market"
-                value={title}
-                onChangeText={setTitle}
-            />
+  return (
+    <ScrollView
+      contentContainerStyle={styles.container}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
+      <Text style={styles.header}>Add Event</Text>
+      <Text style={styles.subheader}>Create a new event for Deni</Text>
 
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="What is this event?"
-                value={description}
-                onChangeText={setDescription}
-            />
+      <Text style={styles.label}>Event Title</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Night Market"
+        value={title}
+        onChangeText={setTitle}
+      />
 
-            <Text style={styles.label}>Address</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="123 Main St, Chattanooga, TN"
-                value={address}
-                onChangeText={setAddress}
-            />
-            <Text style={styles.label}>Recurring</Text>
+      <Text style={styles.label}>Description</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="What is this event?"
+        value={description}
+        onChangeText={setDescription}
+      />
 
+      <Text style={styles.label}>Address</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="123 Main St, Chattanooga, TN"
+        value={address}
+        onChangeText={setAddress}
+      />
+      <Text style={styles.label}>Recurring</Text>
 
+      <Pressable
+        style={styles.input}
+        onPress={() => setShowDropdown((prev) => !prev)}
+      >
+        <Text>
+          {recurring.type === "none"
+            ? "One-time event"
+            : recurring.type === "daily"
+              ? "Daily"
+              : "Weekly"}
+        </Text>
+      </Pressable>
+
+      {showDropdown && (
+        <View style={styles.dropdown}>
+          {[
+            { label: "One-time event", value: "none" },
+            { label: "Daily", value: "daily" },
+            { label: "Weekly", value: "weekly" },
+          ].map((item) => (
             <Pressable
-                style={styles.input}
-                onPress={() => setShowDropdown((prev) => !prev)}
+              key={item.value}
+              style={styles.dropdownItem}
+              onPress={() => {
+                setRecurring((prev) => ({ ...prev, type: item.value }));
+                setShowDropdown(false);
+              }}
             >
-                <Text>
-                    {recurring.type === "none"
-                        ? "One-time event"
-                        : recurring.type === "daily"
-                            ? "Daily"
-                            : "Weekly"}
-                </Text>
+              <Text>{item.label}</Text>
             </Pressable>
+          ))}
+        </View>
+      )}
+      <Text style={styles.label}>Start Time</Text>
+      <Pressable style={styles.input} onPress={handleStartPress}>
+        <Text>
+          {startTime ? startTime.toLocaleString() : "Select start time"}
+        </Text>
+      </Pressable>
 
-            {showDropdown && (
-                <View style={styles.dropdown}>
-                    {[
-                        { label: "One-time event", value: "none" },
-                        { label: "Daily", value: "daily" },
-                        { label: "Weekly", value: "weekly" },
-                    ].map((item) => (
-                        <Pressable
-                            key={item.value}
-                            style={styles.dropdownItem}
-                            onPress={() => {
-                                setRecurring((prev) => ({ ...prev, type: item.value }));
-                                setShowDropdown(false);
-                            }}
-                        >
-                            <Text>{item.label}</Text>
-                        </Pressable>
-                    ))}
-                </View>
-            )}
-            <Text style={styles.label}>Start Time</Text>
-            <Pressable style={styles.input} onPress={handleStartPress}>
-                <Text>
-                    {startTime ? startTime.toLocaleString() : "Select start time"}
-                </Text>
-            </Pressable>
+      <Text style={styles.label}>End Time</Text>
+      <Pressable style={styles.input} onPress={handleEndPress}>
+        <Text>{endTime ? endTime.toLocaleString() : "Select end time"}</Text>
+      </Pressable>
+      {Platform.OS === "ios" && showStart && (
+        <DateTimePicker
+          value={startTime || new Date()}
+          mode="datetime"
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            if (selectedDate) setStartTime(selectedDate);
+          }}
+        />
+      )}
 
-            <Text style={styles.label}>End Time</Text>
-            <Pressable style={styles.input} onPress={handleEndPress}>
-                <Text>
-                    {endTime ? endTime.toLocaleString() : "Select end time"}
-                </Text>
-            </Pressable>
-            {Platform.OS === "ios" && showStart && (
-                <DateTimePicker
-                    value={startTime || new Date()}
-                    mode="datetime"
-                    display="spinner"
-                    onChange={(event, selectedDate) => {
-                        if (selectedDate) setStartTime(selectedDate);
-                    }}
-                />
-            )}
+      {Platform.OS === "ios" && showEnd && (
+        <DateTimePicker
+          value={endTime || new Date()}
+          mode="datetime"
+          display="spinner"
+          onChange={(event, selectedDate) => {
+            if (!selectedDate) return;
 
-            {Platform.OS === "ios" && showEnd && (
-                <DateTimePicker
-                    value={endTime || new Date()}
-                    mode="datetime"
-                    display="spinner"
-                    onChange={(event, selectedDate) => {
-                        if (!selectedDate) return;
+            if (startTime && selectedDate <= startTime) {
+              Alert.alert("Invalid time", "End must be after start");
+              return;
+            }
 
-                        if (startTime && selectedDate <= startTime) {
-                            Alert.alert("Invalid time", "End must be after start");
-                            return;
-                        }
+            setEndTime(selectedDate);
+          }}
+        />
+      )}
 
-                        setEndTime(selectedDate);
-                    }}
-                />
-            )}
-
-            <Pressable style={styles.button} onPress={handleSubmit}>
-                <Text style={styles.buttonText}>Create Event</Text>
-            </Pressable>
-        </ScrollView>
-    );
+      <Pressable
+        style={[
+          styles.button,
+          !formValid
+            ? styles.buttonDisabled
+            : isSubmitting
+              ? styles.buttonSubmitting
+              : styles.buttonActive,
+        ]}
+        onPress={handleSubmit}
+        disabled={!formValid || isSubmitting}
+      >
+        <Text style={[styles.buttonText, formValid && styles.buttonTextActive]}>
+          Create Event
+        </Text>
+      </Pressable>
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        padding: 20,
-        paddingBottom: 160,
-        backgroundColor: "#E6C79C",
-    },
-    header: {
-        fontSize: 28,
-        fontWeight: "bold",
-        marginTop: 40,
-        marginBottom: 10,
-        textAlign: "center"
-    },
-    subheader: {
-        fontSize: 16,
-        textAlign: "center",
-        marginBottom: 30
-    },
-    label: {
-        fontSize: 16,
-        marginBottom: 6
-    },
-    input: {
-        backgroundColor: "#E5E5E5",
-        padding: 15,
-        borderRadius: 12,
-        marginBottom: 20
-    },
-    button: {
-        backgroundColor: "#D6C2A1",
-        padding: 15,
-        borderRadius: 12,
-        alignItems: "center",
-        marginTop: 10
-    },
-    buttonText: {
-        fontSize: 16,
-        fontWeight: "600"
-    },
-    dropdown: {
-        backgroundColor: "#fff",
-        borderRadius: 12,
-        marginTop: -10,
-        marginBottom: 20,
-        elevation: 4,
-        zIndex: 1000,
-    },
-    dropdownItem: {
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: "#eee",
-    },
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    paddingBottom: 160,
+    backgroundColor: "#E6C79C",
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginTop: 40,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  subheader: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 6,
+  },
+  input: {
+    backgroundColor: "#E5E5E5",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: "#D6C2A1",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dropdown: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    marginTop: -10,
+    marginBottom: 20,
+    elevation: 4,
+    zIndex: 1000,
+  },
+  dropdownItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonActive: {
+    backgroundColor: "#3B82F6",
+  },
+  buttonSubmitting: {
+    backgroundColor: "#1D4ED8",
+  },
+  buttonTextActive: {
+    color: "#FFFFFF",
+  },
 });

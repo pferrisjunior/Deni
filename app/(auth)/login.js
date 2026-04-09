@@ -1,10 +1,25 @@
 import React, { useState, useEffect } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, Platform, ScrollView, KeyboardAvoidingView, } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Platform,
+  ScrollView,
+  KeyboardAvoidingView,
+} from "react-native";
 import { auth } from "../../lib/firebase";
-import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword, } from "firebase/auth";
-import { useRouter } from 'expo-router';
+import {
+  GoogleAuthProvider,
+  signInWithCredential,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { useRouter } from "expo-router";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { AntDesign } from "@expo/vector-icons";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,8 +57,8 @@ export default function Login() {
     }
   };
   return (
-    <View style={{ flex: 1, backgroundColor: '#fbe0b3' }}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#fbe0b3' }}>
+    <View style={{ flex: 1, backgroundColor: "#fbe0b3" }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fbe0b3" }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -57,7 +72,7 @@ export default function Login() {
             <View style={styles.container}>
               <View style={styles.header}>
                 <Image
-                  source={require('../../assets/content.png')}
+                  source={require("../../assets/content.png")}
                   style={styles.headerImg}
                 />
                 <Text style={styles.title}>Sign into Deni</Text>
@@ -92,13 +107,25 @@ export default function Login() {
                   />
                 </View>
                 <TouchableOpacity style={styles.btn} onPress={signIn}>
-                  <Text style={styles.buttonText} > Sign in </Text>
+                  <Text style={styles.buttonText}> Sign in </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btn} onPress={signInWithGoogle}>
-                  <Text style={styles.buttonText} > Sign in with Google </Text>
+                <TouchableOpacity
+                  style={styles.googleBtn}
+                  onPress={signInWithGoogle}
+                >
+                  <AntDesign name="google" size={20} color="#DB4437" />
+                  <Text style={styles.googleButtonText}>
+                    Sign in with Google
+                  </Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.btn} onPress={registrationButton}>
-                  <Text style={styles.buttonText} > New user? Press here to register. </Text>
+                <TouchableOpacity
+                  style={styles.btn}
+                  onPress={registrationButton}
+                >
+                  <Text style={styles.buttonText}>
+                    {" "}
+                    New user? Press here to register.{" "}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -120,16 +147,15 @@ const styles = StyleSheet.create({
     width: 300,
     height: 120,
     alignSelf: "center",
-    resizeMode: 'contain',
+    resizeMode: "contain",
     marginBottom: 36,
   },
   title: {
     alignSelf: "center",
     fontSize: 27,
-    fontWeight: '700',
-    color: '#1e1e1e',
+    fontWeight: "700",
+    color: "#1e1e1e",
     marginBottom: 6,
-
   },
   subtitle: {
     fontSize: 15,
@@ -174,5 +200,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#222",
   },
-});
+  googleBtn: {
+    width: "90%",
+    alignSelf: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
 
+  googleButtonText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#222",
+    marginLeft: 10,
+  },
+});
