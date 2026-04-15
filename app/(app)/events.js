@@ -22,7 +22,7 @@ const UpcomingEvents = () => {
       const database = getDatabase();
       const eventsRef = ref(database, "events");
 
-      // show all future events, not just next 24 hours
+      // querys for startTime and events
       const q = query(
         eventsRef,
         orderByChild("startTime"),
@@ -33,7 +33,7 @@ const UpcomingEvents = () => {
 
       console.log("snapshot exists:", snapshot.exists());
       console.log("snapshot value:", snapshot.val());
-
+      //gets the data and sorts by id and the value for the start time
       if (snapshot.exists()) {
         const data = snapshot.val();
 
@@ -41,7 +41,7 @@ const UpcomingEvents = () => {
           id,
           ...value,
         }));
-
+        
         eventList.sort((a, b) => {
           const aTime = Number(a.startTime) || 0;
           const bTime = Number(b.startTime) || 0;
@@ -67,7 +67,7 @@ const UpcomingEvents = () => {
       fetchData();
     }
   };
-
+  
   const handleToggleSubscription = async (eventId, isSubscribed) => {
     try {
       if (!user) {
