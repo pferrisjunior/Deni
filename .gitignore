@@ -2,13 +2,11 @@
 
 # dependencies
 node_modules/
-
 # Expo
 .expo/
 dist/
 web-build/
 expo-env.d.ts
-
 # Native
 .kotlin/
 *.orig.*
@@ -17,25 +15,39 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
-
 # Metro
 .metro-health-check*
-
 # debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-
 # macOS
 .DS_Store
 *.pem
-
 # local env files
 .env*.local
-
 # typescript
 *.tsbuildinfo
-
 # generated native folders
 /ios
 /android
+.env
+# Node / React Native
+node_modules/
+# Environment variables
+.env
+.env.local
+# Expo
+.expo/
+# Build output
+build/
+dist/
+# OS junk
+.DS_Store
+.env
+.vscode/
+node_modules/
+.expo
+#google-services
+google-services.json
+GoogleService-Info.plist
