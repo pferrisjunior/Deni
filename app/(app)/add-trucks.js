@@ -59,13 +59,45 @@ export default function AddTruck() {
 
   const handleStartPress = () => {
     if (Platform.OS === "android") {
+      const baseStartTime = startTime ?? new Date();
+
       DateTimePickerAndroid.open({
-        value: startTime || new Date(),
-        mode: "datetime",
+        value: baseStartTime,
+        mode: "date",
         is24Hour: true,
-        onChange: (event, selectedDate) => {
-          if (!event || event.type === "dismissed") return;
-          if (selectedDate) setStartTime(selectedDate);
+        onChange: (dateEvent, selectedDate) => {
+          if (!dateEvent || dateEvent.type === "dismissed" || !selectedDate) {
+            return;
+          }
+
+          DateTimePickerAndroid.open({
+            value: baseStartTime,
+            mode: "time",
+            is24Hour: true,
+            onChange: (timeEvent, selectedTime) => {
+              if (
+                !timeEvent ||
+                timeEvent.type === "dismissed" ||
+                !selectedTime
+              ) {
+                return;
+              }
+
+              const newStartTime = new Date(selectedDate);
+              newStartTime.setHours(selectedTime.getHours());
+              newStartTime.setMinutes(selectedTime.getMinutes());
+              newStartTime.setSeconds(0);
+              newStartTime.setMilliseconds(0);
+
+              setStartTime(newStartTime);
+
+              if (!endTime) {
+                const defaultEndTime = new Date(newStartTime);
+                defaultEndTime.setHours(defaultEndTime.getHours() + 1);
+                setEndTime(defaultEndTime);
+              }
+            },
+          });
         },
       });
     } else {
@@ -75,20 +107,44 @@ export default function AddTruck() {
 
   const handleEndPress = () => {
     if (Platform.OS === "android") {
-      DateTimePickerAndroid.open({
-        value: endTime || new Date(),
-        mode: "datetime",
-        is24Hour: true,
-        onChange: (event, selectedDate) => {
-          if (!event || event.type === "dismissed") return;
-          if (!selectedDate) return;
+      const baseEnd = endTime ?? startTime ?? new Date();
 
-          if (startTime && selectedDate <= startTime) {
-            Alert.alert("Invalid time", "End must be after start");
+      DateTimePickerAndroid.open({
+        value: baseEnd,
+        mode: "date",
+        is24Hour: true,
+        onChange: (dateEvent, selectedDate) => {
+          if (!dateEvent || dateEvent.type === "dismissed" || !selectedDate) {
             return;
           }
 
-          setEndTime(selectedDate);
+          DateTimePickerAndroid.open({
+            value: baseEnd,
+            mode: "time",
+            is24Hour: true,
+            onChange: (timeEvent, selectedTime) => {
+              if (
+                !timeEvent ||
+                timeEvent.type === "dismissed" ||
+                !selectedTime
+              ) {
+                return;
+              }
+
+              const newEndTime = new Date(selectedDate);
+              newEndTime.setHours(selectedTime.getHours());
+              newEndTime.setMinutes(selectedTime.getMinutes());
+              newEndTime.setSeconds(0);
+              newEndTime.setMilliseconds(0);
+
+              if (startTime && newEndTime <= startTime) {
+                Alert.alert("Invalid time", "End must be after start");
+                return;
+              }
+
+              setEndTime(newEndTime);
+            },
+          });
         },
       });
     } else {
@@ -251,17 +307,17 @@ export default function AddTruck() {
       </Pressable>
       {Platform.OS === "ios" && showStart && (
         <DateTimePicker
-          value={startTime || new Date()}
+          value={startTime ?? new Date()}
           mode="datetime"
           display="spinner"
           onChange={(event, selectedDate) => {
-            if (selectedDate) setStartTime(selectedDate);
+            if (selectedDate) setStartTime(new Date(selectedDate));
           }}
         />
       )}
       {Platform.OS === "ios" && showEnd && (
         <DateTimePicker
-          value={endTime || new Date()}
+          value={endTime ?? startTime ?? new Date()}
           mode="datetime"
           display="spinner"
           onChange={(event, selectedDate) => {
@@ -272,7 +328,7 @@ export default function AddTruck() {
               return;
             }
 
-            setEndTime(selectedDate);
+            setEndTime(new Date(selectedDate));
           }}
         />
       )}

@@ -41,13 +41,45 @@ export default function AddEvent() {
 
   const handleStartPress = () => {
     if (Platform.OS === "android") {
+      const baseStart = startTime ?? new Date();
+
       DateTimePickerAndroid.open({
-        value: startTime || new Date(),
-        mode: "datetime",
+        value: baseStart,
+        mode: "date",
         is24Hour: true,
-        onChange: (event, selectedDate) => {
-          if (!event || event.type === "dismissed") return;
-          if (selectedDate) setStartTime(selectedDate);
+        onChange: (dateEvent, selectedDate) => {
+          if (!dateEvent || dateEvent.type === "dismissed" || !selectedDate) {
+            return;
+          }
+
+          DateTimePickerAndroid.open({
+            value: baseStart,
+            mode: "time",
+            is24Hour: true,
+            onChange: (timeEvent, selectedTime) => {
+              if (
+                !timeEvent ||
+                timeEvent.type === "dismissed" ||
+                !selectedTime
+              ) {
+                return;
+              }
+
+              const newStartTime = new Date(selectedDate);
+              newStartTime.setHours(selectedTime.getHours());
+              newStartTime.setMinutes(selectedTime.getMinutes());
+              newStartTime.setSeconds(0);
+              newStartTime.setMilliseconds(0);
+
+              setStartTime(newStartTime);
+
+              if (!endTime) {
+                const defaultEnd = new Date(newStartTime);
+                defaultEnd.setHours(defaultEnd.getHours() + 1);
+                setEndTime(defaultEnd);
+              }
+            },
+          });
         },
       });
     } else {
@@ -57,20 +89,47 @@ export default function AddEvent() {
 
   const handleEndPress = () => {
     if (Platform.OS === "android") {
-      DateTimePickerAndroid.open({
-        value: endTime || new Date(),
-        mode: "datetime",
-        is24Hour: true,
-        onChange: (event, selectedDate) => {
-          if (!event || event.type === "dismissed") return;
-          if (!selectedDate) return;
+      const baseEnd = endTime ?? startTime ?? new Date();
 
-          if (startTime && selectedDate <= startTime) {
-            Alert.alert("Invalid time", "End must be after start");
+      DateTimePickerAndroid.open({
+        value: baseEnd,
+        mode: "date",
+        is24Hour: true,
+        onChange: (dateEvent, selectedDate) => {
+          if (!dateEvent || dateEvent.type === "dismissed" || !selectedDate) {
             return;
           }
 
-          setEndTime(selectedDate);
+          DateTimePickerAndroid.open({
+            value: baseEnd,
+            mode: "time",
+            is24Hour: true,
+            onChange: (timeEvent, selectedTime) => {
+              if (
+                !timeEvent ||
+                timeEvent.type === "dismissed" ||
+                !selectedTime
+              ) {
+                return;
+              }
+
+              const newEndTime = new Date(selectedDate);
+              newEndTime.setHours(selectedTime.getHours());
+              newEndTime.setMinutes(selectedTime.getMinutes());
+              newEndTime.setSeconds(0);
+              newEndTime.setMilliseconds(0);
+
+              if (startTime && newEndTime <= startTime) {
+                Alert.alert(
+                  "Invalid time selected",
+                  "End time must be after start time",
+                );
+                return;
+              }
+
+              setEndTime(newEndTime);
+            },
+          });
         },
       });
     } else {
@@ -92,7 +151,10 @@ export default function AddEvent() {
         return;
       }
       if (endTime <= startTime) {
-        Alert.alert("Invalid time", "End time must be after start time");
+        Alert.alert(
+          "Invalid time selected",
+          "End time must be after start time",
+        );
         return;
       }
       setIsSubmitting(true);
@@ -240,7 +302,10 @@ export default function AddEvent() {
             if (!selectedDate) return;
 
             if (startTime && selectedDate <= startTime) {
-              Alert.alert("Invalid time", "End must be after start");
+              Alert.alert(
+                "Invalid time selected",
+                "End time must be after start time",
+              );
               return;
             }
 
